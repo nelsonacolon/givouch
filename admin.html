@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Moderation — GIVouch</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <style>
+    .admin { padding: 28px 0 56px; }
+    .admin .container { max-width: 900px; }
+    .login { max-width: 420px; }
+    .login input { margin: 8px 0 12px; }
+    .tabs { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+    .tab { font: inherit; padding: 7px 14px; border-radius: 999px; border: 2px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+    .tab.on { border-color: var(--accent); background: var(--gold-100); color: var(--navy-900); font-weight: 700; }
+    .mod-card { margin-bottom: 14px; }
+    .mod-card dl { display: grid; grid-template-columns: 180px 1fr; gap: 4px 12px; margin: 12px 0; font-size: 0.92rem; }
+    .mod-card dt { color: var(--text-muted); }
+    .mod-card dd { margin: 0; }
+    .mod-actions { display: flex; gap: 8px; }
+    .btn-reject { background: #fde2e1; color: #8a1c17; }
+    @media (max-width: 600px) { .mod-card dl { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="/"><img src="/assets/logo-mark.svg" alt="" aria-hidden="true"><span class="logo-text">GI<span class="gold">Vouch</span></span></a>
+      <button class="btn-ghost" id="logout" type="button" hidden>Sign out</button>
+    </div>
+  </header>
+  <main class="admin"><div class="container" id="admin"></div></main>
+
+  <script>
+  (function () {
+    "use strict";
+    var KEY = "gv-admin-token";
+    var token = "";
+    try { token = sessionStorage.getItem(KEY) || ""; } catch (e) {}
+    var status = "pending";
+    var root = document.getElementById("admin");
+    var logout = document.getElementById("logout");
+
+    function el(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined && text !== null) e.textContent = text;
+      return e;
+    }
+
+    function api(method, body) {
+      return fetch("/api/admin/reviews" + (method === "GET" ? "?status=" + status : ""), {
+        method: method,
+        headers: Object.assign({ Authorization: "Bearer " + token }, body ? { "Content-Type": "application/json" } : {}),
+        body: body ? JSON.stringify(body) : undefined
+      }).then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); });
+    }
+
+    function login(msg) {
+      logout.hidden = true;
+      root.innerHTML = "";
+      var box = el("div", "card login");
+      box.appendChild(el("h1", null, "Moderation"));
+      box.appendChild(el("p", "muted", "Enter the ADMIN_TOKEN password set in Vercel."));
+      var form = el("form");
+      var input = el("input", "field-input");
+      input.type = "password"; input.autocomplete = "current-password"; input.placeholder = "Password";
+      form.appendChild(input);
+      var btn = el("button", "btn btn-primary", "Sign in"); btn.type = "submit";
+      form.appendChild(btn);
+      if (msg) form.appendChild(el("p", "form-error", msg));
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        token = input.value.trim();
+        try { sessionStorage.setItem(KEY, token); } catch (x) {}
+        load();
+      });
+      box.appendChild(form);
+      root.appendChild(box);
+      input.focus();
+    }
+
+    function row(dl, label, value) {
+      if (value === null || value === undefined || value === "") return;
+      dl.appendChild(el("dt", null, label));
+      dl.appendChild(el("dd", null, String(value)));
+    }
+
+    function card(r) {
+      var c = el("article", "card mod-card");
+      var h = el("h3", null, r.program_name + " — " + r.school);
+      c.appendChild(h);
+      c.appendChild(el("p", "muted", "Review #" + r.id + " · " + new Date(r.created_at).toLocaleString() + (r.is_sample ? " · SAMPLE" : "")));
+      var dl = el("dl");
+      row(dl, "Email (private)", r.reviewer_email);
+      row(dl, "Display name", r.display_name || "(Verified veteran)");
+      row(dl, "Reviewer", r.reviewer_status);
+      row(dl, "Benefit", r.benefit);
+      row(dl, "Start year", r.start_year);
+      row(dl, "Overall", r.overall_rating + " / 5");
+      row(dl, "Would recommend", r.would_recommend === null ? null : (r.would_recommend ? "Yes" : "No"));
+      row(dl, "GI Bill paperwork", r.paperwork_rating ? r.paperwork_rating + " / 5" : null);
+      row(dl, "Paid on time", r.paid_on_time);
+      row(dl, "Credits transferred", r.credits_transferred);
+      row(dl, "Worth the months", r.worth_months ? r.worth_months + " / 5" : null);
+      row(dl, "After the program", r.job_outcome);
+      row(dl, "Comment", r.comment);
+      c.appendChild(dl);
+      var actions = el("div", "mod-actions");
+      [["publish", "Publish", "btn btn-primary"], ["reject", "Reject", "btn btn-reject"]].forEach(function (a) {
+        if ((a[0] === "publish" && r.status === "published") || (a[0] === "reject" && r.status === "rejected")) return;
+        var b = el("button", a[2], a[1]); b.type = "button";
+        b.addEventListener("click", function () {
+          b.disabled = true;
+          api("POST", { id: r.id, action: a[0] }).then(function (res) {
+            if (res.status === 200) load(); else { b.disabled = false; alert(res.d.error || "Failed"); }
+          });
+        });
+        actions.appendChild(b);
+      });
+      c.appendChild(actions);
+      return c;
+    }
+
+    function render(reviews) {
+      logout.hidden = false;
+      root.innerHTML = "";
+      root.appendChild(el("h1", null, "Moderation"));
+      var tabs = el("div", "tabs");
+      [["pending", "Waiting"], ["published", "Published"], ["rejected", "Rejected"]].forEach(function (s) {
+        var b = el("button", "tab" + (status === s[0] ? " on" : ""), s[1]); b.type = "button";
+        b.addEventListener("click", function () { status = s[0]; load(); });
+        tabs.appendChild(b);
+      });
+      root.appendChild(tabs);
+      if (!reviews.length) root.appendChild(el("p", "notice", "Nothing here right now."));
+      reviews.forEach(function (r) { root.appendChild(card(r)); });
+    }
+
+    function load() {
+      if (!token) return login();
+      root.innerHTML = "<p class='muted'>Loading…</p>";
+      api("GET").then(function (res) {
+        if (res.status === 200) return render(res.d.reviews);
+        if (res.status === 401) { try { sessionStorage.removeItem(KEY); } catch (e) {} token = ""; return login("Wrong password."); }
+        login(res.d.error || "Something went wrong.");
+      }).catch(function () { login("Couldn't reach the server."); });
+    }
+
+    logout.addEventListener("click", function () {
+      try { sessionStorage.removeItem(KEY); } catch (e) {}
+      token = ""; login();
+    });
+
+    load();
+  })();
+  </script>
+</body>
+</html>

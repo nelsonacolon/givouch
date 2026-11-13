@@ -33,3 +33,9 @@ Open `/api/health` on the deployed site. It should show `"ok": true` and `"anthr
 3. Paste and run `db/schema.sql`. It is safe to run again.
 4. Optional, for testing only: run `db/sample-data.sql`. Every sample row is marked `is_sample`; remove them before launch with `DELETE FROM programs WHERE is_sample;`
 5. Check `/api/health` shows `databaseReachable: true` and `tablesCreated: true`.
+
+## Reviews and moderation
+- Visitors write reviews at `/review?program=<id>` (the "Write a review" button on a program page).
+- Every review is saved as **pending** and only appears after it is published on `/admin`.
+- `/admin` needs an `ADMIN_TOKEN` environment variable in Vercel (16+ characters, mark it Sensitive). Redeploy after adding it.
+- One review per email per program. A hidden field blocks simple bots. Cloudflare Turnstile is checked automatically once `TURNSTILE_SECRET_KEY` is set.

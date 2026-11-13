@@ -19,6 +19,12 @@
     return window.GVLabels.country(name);
   }
 
+  // Use a translation when one exists, otherwise show the stored text as is.
+  function label(key, fallback) {
+    var v = t(key);
+    return v && v !== key ? v : fallback;
+  }
+
   function safeUrl(u) {
     try {
       var url = new URL(u);
@@ -49,7 +55,7 @@
     var meta = [];
     if (r.start_year) meta.push(t("prog.started") + " " + r.start_year);
     if (r.reviewer_status) meta.push(t("who." + r.reviewer_status));
-    if (r.benefit) meta.push(r.benefit);
+    if (r.benefit) meta.push(label("benefit." + r.benefit, r.benefit));
     if (meta.length) c.appendChild(el("p", "review-meta", meta.join(" · ")));
 
     var verdict = r.overall_rating + " / 5";
@@ -62,7 +68,7 @@
     if (r.paid_on_time) facts.appendChild(el("li", null, t("prog.paidOnTime") + ": " + t("paid." + r.paid_on_time)));
     if (r.credits_transferred) facts.appendChild(el("li", null, t("prog.credits") + ": " + t("credits." + r.credits_transferred)));
     if (r.worth_months) facts.appendChild(el("li", null, t("prog.worth") + ": " + r.worth_months + " / 5"));
-    if (r.job_outcome) facts.appendChild(el("li", null, t("prog.job") + ": " + r.job_outcome));
+    if (r.job_outcome) facts.appendChild(el("li", null, t("prog.job") + ": " + label("job." + r.job_outcome, r.job_outcome)));
     if (facts.children.length) c.appendChild(facts);
 
     if (r.comment) c.appendChild(el("p", "review-comment", r.comment));
@@ -127,12 +133,9 @@
     box.appendChild(grid);
     side.appendChild(box);
 
-    var write = el("button", "btn btn-primary btn-block", t("hero.review"));
-    write.type = "button";
-    write.disabled = true;
-    write.title = t("prog.writeSoon");
+    var write = el("a", "btn btn-primary btn-block", t("hero.review"));
+    write.href = "/review?program=" + encodeURIComponent(p.id);
     side.appendChild(write);
-    side.appendChild(el("p", "muted small center", t("prog.writeSoon")));
 
     var va = el("a", "btn btn-outline btn-block", t("prog.verifyVA") + " ↗");
     va.href = safeUrl(p.va_listing_url || VA_TOOL);
