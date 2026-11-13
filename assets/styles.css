@@ -278,3 +278,5 @@ textarea.field-input { resize: vertical; }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .thanks { text-align: center; padding: 36px 24px; }
 .thanks h1 { margin-top: 0; }
+
+.ts-box { margin: 16px 0 0; min-height: 65px; }
