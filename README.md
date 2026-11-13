@@ -26,3 +26,10 @@ Never commit real keys. `.env` files are ignored by git.
 
 ## Check a deployment
 Open `/api/health` on the deployed site. It should show `"ok": true` and `"anthropicKeyConfigured": true`.
+
+## Database (Neon)
+1. In Vercel → Storage, create a Neon database (Free plan) connected to Production and Preview. Vercel adds `DATABASE_URL` automatically.
+2. Open the database in Neon (Storage → your database → Open in Neon) → SQL Editor.
+3. Paste and run `db/schema.sql`. It is safe to run again.
+4. Optional, for testing only: run `db/sample-data.sql`. Every sample row is marked `is_sample`; remove them before launch with `DELETE FROM programs WHERE is_sample;`
+5. Check `/api/health` shows `databaseReachable: true` and `tablesCreated: true`.

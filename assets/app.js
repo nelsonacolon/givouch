@@ -37,7 +37,7 @@
       "types.2": "Trade and vocational schools",
       "types.3": "Flight schools",
       "types.4": "Approved schools abroad",
-      "soon": "GIVouch is in early development. Search and reviews are coming soon.",
+      "soon": "GIVouch is in early development. Reviews are coming soon.",
       "footer.tagline": "Honest GI Bill program reviews by veterans and military families.",
       "footer.privacy": "Privacy Policy",
       "footer.cookies": "Cookie Policy",
@@ -47,6 +47,29 @@
       "cookie.accept": "Accept All",
       "cookie.reject": "Reject All",
       "cookie.more": "Cookie Policy",
+      "browse.title": "Browse programs",
+      "browse.filters": "Filters",
+      "browse.clear": "Clear all",
+      "browse.format": "Format",
+      "browse.country": "Country",
+      "browse.field": "Field of study",
+      "browse.any": "Any",
+      "browse.programs": "programs",
+      "browse.sortReviewed": "Sort: Most reviewed",
+      "browse.sortRating": "Sort: Highest rated",
+      "browse.reviews": "reviews",
+      "browse.review": "review",
+      "browse.noReviews": "No reviews yet. Be the first.",
+      "browse.approved": "GI Bill approved",
+      "browse.sample": "Sample data",
+      "browse.more": "Show more",
+      "browse.none": "No programs match yet. Try fewer filters or a different search.",
+      "browse.cantFind": "Can't find it? Adding programs is coming soon.",
+      "browse.loading": "Loading programs…",
+      "browse.error": "Programs couldn't load right now. Please try again shortly.",
+      "fmt.online": "Online",
+      "fmt.in_person": "In person",
+      "fmt.abroad": "Abroad",
       "policy.esNote": ""
     },
     es: {
@@ -79,7 +102,7 @@
       "types.2": "Escuelas técnicas y vocacionales",
       "types.3": "Escuelas de aviación",
       "types.4": "Escuelas aprobadas en el extranjero",
-      "soon": "GIVouch está en desarrollo. La búsqueda y las reseñas llegarán pronto.",
+      "soon": "GIVouch está en desarrollo. Las reseñas llegarán pronto.",
       "footer.tagline": "Reseñas honestas de programas del GI Bill por veteranos y familias militares.",
       "footer.privacy": "Política de privacidad",
       "footer.cookies": "Política de cookies",
@@ -89,6 +112,29 @@
       "cookie.accept": "Aceptar todo",
       "cookie.reject": "Rechazar todo",
       "cookie.more": "Política de cookies",
+      "browse.title": "Explorar programas",
+      "browse.filters": "Filtros",
+      "browse.clear": "Borrar todo",
+      "browse.format": "Modalidad",
+      "browse.country": "País",
+      "browse.field": "Área de estudio",
+      "browse.any": "Cualquiera",
+      "browse.programs": "programas",
+      "browse.sortReviewed": "Orden: Más reseñados",
+      "browse.sortRating": "Orden: Mejor calificados",
+      "browse.reviews": "reseñas",
+      "browse.review": "reseña",
+      "browse.noReviews": "Aún no hay reseñas. Sé el primero.",
+      "browse.approved": "Aprobado para GI Bill",
+      "browse.sample": "Datos de prueba",
+      "browse.more": "Mostrar más",
+      "browse.none": "Aún no hay programas que coincidan. Prueba con menos filtros u otra búsqueda.",
+      "browse.cantFind": "¿No lo encuentras? Pronto podrás agregar programas.",
+      "browse.loading": "Cargando programas…",
+      "browse.error": "No se pudieron cargar los programas. Inténtalo de nuevo en un momento.",
+      "fmt.online": "En línea",
+      "fmt.in_person": "Presencial",
+      "fmt.abroad": "En el extranjero",
       "policy.esNote": "La versión en español de esta política estará disponible pronto. Por ahora se muestra en inglés."
     }
   };
@@ -138,6 +184,8 @@
     showBanner(false);
   }
 
+  window.GV = { t: function (k) { return (STRINGS[lang] || STRINGS.en)[k] || STRINGS.en[k] || k; }, lang: function () { return lang; } };
+
   applyTheme();
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -149,6 +197,7 @@
       lang = lang === "en" ? "es" : "en";
       save("gv-lang", lang);
       applyLang();
+      document.dispatchEvent(new Event("gv:lang"));
     });
 
     var themeBtn = document.getElementById("theme-toggle");

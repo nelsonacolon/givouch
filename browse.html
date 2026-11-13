@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browse programs — GIVouch</title>
+  <meta name="description" content="Search GI Bill programs and read reviews from veterans and military families.">
+  <meta name="theme-color" content="#1b2a42">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script src="/assets/app.js"></script>
+  <script src="/assets/browse.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="/" aria-label="GIVouch home">
+        <img src="/assets/logo-mark.svg" alt="" aria-hidden="true">
+        <span class="logo-text">GI<span class="gold">Vouch</span></span>
+      </a>
+      <div class="header-actions">
+        <button class="btn-ghost" id="lang-toggle" type="button" data-i18n="nav.lang">Español</button>
+        <button class="btn-ghost" id="theme-toggle" type="button" aria-label="Toggle light or dark mode">☾ Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="browse">
+  <div class="container">
+    <h1 class="sr-only" data-i18n="browse.title">Browse programs</h1>
+    <form id="search-form" class="browse-search" role="search">
+      <input id="q" type="search" name="q" maxlength="100" aria-label="Search" data-i18n-placeholder="hero.search" placeholder="Search a school, program or country">
+      <button class="btn btn-primary" type="submit" data-i18n="hero.searchBtn">Search</button>
+    </form>
+    <div class="browse-layout">
+      <aside class="filters card" aria-label="Filters">
+        <div class="filters-head"><strong data-i18n="browse.filters">Filters</strong><button type="button" id="clear-all" class="link-btn" data-i18n="browse.clear">Clear all</button></div>
+        <fieldset><legend data-i18n="browse.format">Format</legend>
+          <label><input type="checkbox" name="format" value="online"> <span data-i18n="fmt.online">Online</span></label>
+          <label><input type="checkbox" name="format" value="in_person"> <span data-i18n="fmt.in_person">In person</span></label>
+          <label><input type="checkbox" name="format" value="abroad"> <span data-i18n="fmt.abroad">Abroad</span></label>
+        </fieldset>
+        <label class="select-label"><span data-i18n="browse.country">Country</span><select id="f-country"></select></label>
+        <label class="select-label"><span data-i18n="browse.field">Field of study</span><select id="f-field"></select></label>
+      </aside>
+      <section class="results-col">
+        <div class="results-head">
+          <strong id="result-count" aria-live="polite"></strong>
+          <select id="sort" aria-label="Sort">
+            <option value="reviewed" data-i18n="browse.sortReviewed">Sort: Most reviewed</option>
+            <option value="rating" data-i18n="browse.sortRating">Sort: Highest rated</option>
+          </select>
+        </div>
+        <div id="results"></div>
+        <div class="center"><button type="button" id="show-more" class="btn btn-outline" data-i18n="browse.more" hidden>Show more</button></div>
+        <p class="muted" data-i18n="browse.cantFind">Can't find it? Adding programs is coming soon.</p>
+      </section>
+    </div>
+  </div>
+</main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <strong>GIVouch</strong> — <span data-i18n="footer.tagline">Honest GI Bill program reviews by veterans and military families.</span>
+      <ul class="footer-links">
+        <li><a href="/privacy" data-i18n="footer.privacy">Privacy Policy</a></li>
+        <li><a href="/cookies" data-i18n="footer.cookies">Cookie Policy</a></li>
+        <li><button type="button" id="cookie-prefs" data-i18n="footer.prefs">Cookie preferences</button></li>
+      </ul>
+      <p class="disclaimer" data-i18n="footer.disclaimer">GIVouch is an independent site and is not affiliated with or endorsed by the U.S. Department of Veterans Affairs or any government agency. Reviews reflect the personal experiences of their authors. Always confirm program approval and benefit details with the VA.</p>
+      <p class="disclaimer">© 2026 GIVouch</p>
+    </div>
+  </footer>
+
+  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-live="polite" aria-label="Cookie consent">
+    <p data-i18n="cookie.text">GIVouch uses only essential cookies to remember your language, theme and this choice. No analytics, tracking or advertising cookies.</p>
+    <div class="cookie-actions">
+      <button class="btn btn-primary" id="cookie-accept" type="button" data-i18n="cookie.accept">Accept All</button>
+      <button class="btn btn-outline" id="cookie-reject" type="button" data-i18n="cookie.reject">Reject All</button>
+      <a class="btn btn-outline" href="/cookies" data-i18n="cookie.more">Cookie Policy</a>
+    </div>
+  </div>
+</body>
+</html>

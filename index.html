@@ -33,11 +33,11 @@
         <p class="eyebrow" data-i18n="hero.eyebrow">For veterans, service members and their families</p>
         <h1 data-i18n="hero.title">Find a program other veterans vouch for.</h1>
         <p class="lead" data-i18n="hero.lead">Honest reviews from veterans who used their GI Bill, so you spend your months wisely. Including approved schools abroad.</p>
-        <form class="search-box" role="search" onsubmit="return false;">
-          <input type="search" aria-label="Search" data-i18n-placeholder="hero.search" placeholder="Search a school, program or country" disabled>
-          <button class="btn btn-primary" type="submit" data-i18n="hero.searchBtn" disabled>Search</button>
+        <form class="search-box" role="search" action="/browse" method="get">
+          <input type="search" name="q" aria-label="Search" data-i18n-placeholder="hero.search" placeholder="Search a school, program or country" maxlength="100">
+          <button class="btn btn-primary" type="submit" data-i18n="hero.searchBtn">Search</button>
         </form>
-        <div class="chips" aria-label="Formats"><span class="chip" data-i18n="chip.online">Online</span><span class="chip" data-i18n="chip.inperson">In person</span><span class="chip" data-i18n="chip.abroad">Abroad</span></div>
+        <div class="chips" aria-label="Formats"><a class="chip" href="/browse?format=online" data-i18n="chip.online">Online</a><a class="chip" href="/browse?format=in_person" data-i18n="chip.inperson">In person</a><a class="chip" href="/browse?format=abroad" data-i18n="chip.abroad">Abroad</a></div>
         <div class="hero-actions">
           <a class="btn btn-secondary" href="#how" data-i18n="hero.how">How it works</a>
         </div>
@@ -67,7 +67,7 @@
           <div class="card"><div class="icon">✈</div><h3 data-i18n="types.3">Flight schools</h3></div>
           <div class="card"><div class="icon">🌍</div><h3 data-i18n="types.4">Approved schools abroad</h3></div>
         </div>
-        <p class="notice" style="margin-top:28px" data-i18n="soon">GIVouch is in early development. Search and reviews are coming soon.</p>
+        <p class="notice" style="margin-top:28px" data-i18n="soon">GIVouch is in early development. Reviews are coming soon.</p>
       </div>
     </section>
   </main>

@@ -2,5 +2,8 @@
   "name": "givouch",
   "private": true,
   "type": "module",
-  "description": "Honest GI Bill program reviews by veterans and military families."
+  "description": "Honest GI Bill program reviews by veterans and military families.",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.1"
+  }
 }
