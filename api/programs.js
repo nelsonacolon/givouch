@@ -1,4 +1,5 @@
 // GET /api/programs?q=&format=&country=&field=&sort=&offset=
+// The state column is read with to_jsonb so this keeps working before the column is added.
 // Lists approved programs with their published review count and average rating.
 import { getSql } from "./_db.js";
 
@@ -30,7 +31,7 @@ export default async function handler(req, res) {
   try {
     const rows = await sql`
       SELECT p.id, p.school, p.school_type, p.program_name, p.field_of_study, p.format,
-             p.city, p.country, p.gi_bill_approved, p.is_sample,
+             p.city, to_jsonb(p)->>'state' AS state, p.country, p.gi_bill_approved, p.is_sample,
              COUNT(r.id)::int AS review_count,
              ROUND(AVG(r.overall_rating)::numeric, 1)::float AS avg_rating,
              COUNT(*) OVER()::int AS total
@@ -38,7 +39,8 @@ export default async function handler(req, res) {
       LEFT JOIN reviews r ON r.program_id = p.id AND r.status = 'published'
       WHERE p.status = 'approved'
         AND (${like}::text IS NULL OR p.school ILIKE ${like} OR p.program_name ILIKE ${like}
-             OR p.field_of_study ILIKE ${like} OR p.country ILIKE ${like} OR p.city ILIKE ${like})
+             OR p.field_of_study ILIKE ${like} OR p.country ILIKE ${like} OR p.city ILIKE ${like}
+             OR to_jsonb(p)->>'state' ILIKE ${like})
         AND (${country || null}::text IS NULL OR p.country = ${country || null})
         AND (${field || null}::text IS NULL OR p.field_of_study = ${field || null})
         AND (cardinality(${formats}::text[]) = 0 OR p.format = ANY(${formats}::text[]))

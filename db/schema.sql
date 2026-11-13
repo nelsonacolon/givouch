@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS programs (
   field_of_study   TEXT,
   format           TEXT NOT NULL CHECK (format IN ('online', 'in_person', 'abroad')),
   city             TEXT,
+  state            TEXT, -- U.S. state or region abroad, e.g. FL
   country          TEXT NOT NULL DEFAULT 'United States',
   gi_bill_approved BOOLEAN NOT NULL DEFAULT TRUE,
   va_listing_url   TEXT,
@@ -53,3 +54,6 @@ CREATE TABLE IF NOT EXISTS review_reports (
 
 CREATE INDEX IF NOT EXISTS programs_status_idx ON programs (status);
 CREATE INDEX IF NOT EXISTS reviews_program_status_idx ON reviews (program_id, status);
+
+-- Added Nov 2026: state column for programs created before it existed.
+ALTER TABLE programs ADD COLUMN IF NOT EXISTS state TEXT;

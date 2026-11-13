@@ -61,7 +61,7 @@
     var c = el("article", "program-card");
     var left = el("div", "program-main");
     left.appendChild(el("h3", null, p.program_name));
-    var where = [p.school, [p.city, p.country].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
+    var where = [p.school, [p.city, p.state, p.country].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
     left.appendChild(el("p", "program-where", where));
     var tags = el("div", "tags");
     tags.appendChild(el("span", "tag", t("fmt." + p.format)));
