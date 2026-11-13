@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GIVouch — GI Bill Program Reviews</title>
+  <meta name="description" content="Honest reviews of GI Bill schools and programs from veterans and military families, including approved schools abroad.">
+  <meta name="theme-color" content="#0b1a33">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script src="/assets/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="/" aria-label="GIVouch home">
+        <span class="logo-mark" aria-hidden="true">GV</span>
+        <span class="logo-text">GI<span class="gold">Vouch</span></span>
+      </a>
+      <div class="header-actions">
+        <button class="btn-ghost" id="lang-toggle" type="button" data-i18n="nav.lang">Español</button>
+        <button class="btn-ghost" id="theme-toggle" type="button" aria-label="Toggle light or dark mode">☾ Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <p class="eyebrow" data-i18n="hero.eyebrow">For veterans, service members and their families</p>
+        <h1 data-i18n="hero.title">Honest reviews of GI Bill programs, from people who used them.</h1>
+        <p class="lead" data-i18n="hero.lead">Before you spend your benefit months, see what veterans and military families say about the school and program, including approved schools abroad.</p>
+        <form class="search-box" role="search" onsubmit="return false;">
+          <input type="search" aria-label="Search" data-i18n-placeholder="hero.search" placeholder="Search a school, program or country" disabled>
+          <button class="btn btn-primary" type="submit" data-i18n="hero.searchBtn" disabled>Search</button>
+        </form>
+        <div class="hero-actions">
+          <a class="btn btn-secondary" href="#how" data-i18n="hero.how">How it works</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="how">
+      <div class="container">
+        <h2 data-i18n="how.title">How GIVouch works</h2>
+        <p class="sub" data-i18n="how.sub">Built around the questions the official tools don't answer.</p>
+        <div class="grid">
+          <div class="card"><div class="icon">1</div><h3 data-i18n="how.1.title">Find a program</h3><p data-i18n="how.1.body">Search by field or country, and filter by online, in person or abroad.</p></div>
+          <div class="card"><div class="icon">2</div><h3 data-i18n="how.2.title">Read real reviews</h3><p data-i18n="how.2.body">Did GI Bill paperwork go through on time? Did credits transfer? Was it worth the months?</p></div>
+          <div class="card"><div class="icon">3</div><h3 data-i18n="how.3.title">Check it with the VA</h3><p data-i18n="how.3.body">Every program links to the VA's official listing so you can confirm approval.</p></div>
+          <div class="card"><div class="icon">4</div><h3 data-i18n="how.4.title">Share your experience</h3><p data-i18n="how.4.body">A short, structured review takes about three minutes and helps the next person choose.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block alt">
+      <div class="container">
+        <h2 data-i18n="types.title">Schools we cover</h2>
+        <p class="sub" data-i18n="types.sub">Colleges and universities, trade and vocational schools, and flight schools, in the U.S. and abroad.</p>
+        <div class="grid">
+          <div class="card"><div class="icon">🎓</div><h3 data-i18n="types.1">Colleges and universities</h3></div>
+          <div class="card"><div class="icon">🔧</div><h3 data-i18n="types.2">Trade and vocational schools</h3></div>
+          <div class="card"><div class="icon">✈</div><h3 data-i18n="types.3">Flight schools</h3></div>
+          <div class="card"><div class="icon">🌍</div><h3 data-i18n="types.4">Approved schools abroad</h3></div>
+        </div>
+        <p class="notice" style="margin-top:28px" data-i18n="soon">GIVouch is in early development. Search and reviews are coming soon.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <strong>GIVouch</strong> — <span data-i18n="footer.tagline">Honest GI Bill program reviews by veterans and military families.</span>
+      <ul class="footer-links">
+        <li><a href="/privacy" data-i18n="footer.privacy">Privacy Policy</a></li>
+        <li><a href="/cookies" data-i18n="footer.cookies">Cookie Policy</a></li>
+        <li><button type="button" id="cookie-prefs" data-i18n="footer.prefs">Cookie preferences</button></li>
+      </ul>
+      <p class="disclaimer" data-i18n="footer.disclaimer">GIVouch is an independent site and is not affiliated with or endorsed by the U.S. Department of Veterans Affairs or any government agency. Reviews reflect the personal experiences of their authors. Always confirm program approval and benefit details with the VA.</p>
+      <p class="disclaimer">© 2026 GIVouch</p>
+    </div>
+  </footer>
+
+  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-live="polite" aria-label="Cookie consent">
+    <p data-i18n="cookie.text">GIVouch uses only essential cookies to remember your language, theme and this choice. No analytics, tracking or advertising cookies.</p>
+    <div class="cookie-actions">
+      <button class="btn btn-primary" id="cookie-accept" type="button" data-i18n="cookie.accept">Accept All</button>
+      <button class="btn btn-outline" id="cookie-reject" type="button" data-i18n="cookie.reject">Reject All</button>
+      <a class="btn btn-outline" href="/cookies" data-i18n="cookie.more">Cookie Policy</a>
+    </div>
+  </div>
+</body>
+</html>
