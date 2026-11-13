@@ -1,12 +1,13 @@
 /* GIVouch — base styles. Brand: Montserrat, navy + gold. */
 :root {
-  --navy-950: #070f1f;
-  --navy-900: #0b1a33;
-  --navy-800: #102445;
+  --navy-950: #121d30;
+  --navy-900: #1b2a42;
+  --navy-800: #233552;
   --navy-700: #17325c;
   --navy-500: #2f4f80;
-  --gold-500: #c9a23a;
-  --gold-400: #d9b65a;
+  --gold-500: #f2b632;
+  --gold-700: #a87100;
+  --gold-400: #f6c85a;
   --gold-100: #f6edd2;
   --white: #ffffff;
 
@@ -15,7 +16,7 @@
   --surface: #ffffff;
   --surface-alt: #eef1f6;
   --border: #d9dfe8;
-  --text: #0b1a33;
+  --text: #1b2a42;
   --text-muted: #4a5a72;
   --accent: var(--gold-500);
   --accent-text: var(--navy-900);
@@ -64,11 +65,11 @@ a { color: var(--link); }
   gap: 12px; min-height: 64px;
 }
 .logo { display: flex; align-items: center; gap: 8px; color: var(--header-text); text-decoration: none; font-weight: 800; font-size: 1.3rem; letter-spacing: 0.3px; }
-.logo-mark {
-  width: 32px; height: 32px; border-radius: 8px; background: var(--gold-500);
-  color: var(--navy-900); display: grid; place-items: center; font-weight: 900;
-}
-.logo span.gold { color: var(--gold-400); }
+.logo img { width: 26px; height: 30px; display: block; }
+.logo span.gold { color: var(--gold-500); }
+.chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: -8px 0 24px; }
+.chip { border: 1px solid rgba(255,255,255,0.35); color: #dfe6f0; border-radius: 999px; padding: 5px 14px; font-size: 0.85rem; }
+.tagline-sm { display:block; font-size: 0.55rem; letter-spacing: 2px; font-weight: 600; color: #b7c3d6; text-transform: uppercase; margin-top: -2px; }
 .header-actions { display: flex; gap: 8px; align-items: center; }
 .btn-ghost {
   background: transparent; color: var(--header-text);
