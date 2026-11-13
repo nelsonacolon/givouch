@@ -330,6 +330,10 @@
     document.querySelectorAll("[data-i18n-hide-empty]").forEach(function (el) {
       el.hidden = !t[el.getAttribute("data-i18n-hide-empty")];
     });
+    // Whole blocks written in each language (used by the policy pages).
+    document.querySelectorAll("[data-lang-block]").forEach(function (el) {
+      el.hidden = el.getAttribute("data-lang-block") !== lang;
+    });
     updateThemeLabel();
   }
 
