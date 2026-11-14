@@ -151,7 +151,9 @@
     side.appendChild(write);
 
     var va = el("a", "btn btn-outline btn-block", t("prog.verifyVA") + " ↗");
-    va.href = p.va_listing_url ? safeUrl(p.va_listing_url) : vaSearch(p.school);
+    va.href = p.va_listing_url ? safeUrl(p.va_listing_url)
+      : p.country === "United States" ? "/api/va?" + new URLSearchParams({ name: p.school || "", state: p.state || "" }).toString()
+      : vaSearch(p.school);
     va.target = "_blank";
     va.rel = "noopener noreferrer";
     side.appendChild(va);

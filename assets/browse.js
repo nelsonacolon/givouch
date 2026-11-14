@@ -17,6 +17,15 @@
     var n = String(name || "").replace(/\s*-\s*Main Campus$/i, "").trim();
     return n ? VA_TOOL + "schools-and-employers?search=name&name=" + encodeURIComponent(n) : VA_TOOL;
   }
+  // Opens the school's own page in the VA's GI Bill Comparison Tool (via /api/va, which finds
+  // its VA facility code), or the tool's name search if it can't be found.
+  function vaLink(s) {
+    var p = new URLSearchParams();
+    if (s.id) p.set("id", String(s.id));
+    p.set("name", s.name || s.school || "");
+    if (s.state) p.set("state", s.state);
+    return "/api/va?" + p.toString();
+  }
   function safeUrl(u) {
     try { var x = new URL(u); return x.protocol === "https:" || x.protocol === "http:" ? x.href : null; } catch (e) { return null; }
   }
@@ -220,7 +229,7 @@
     main.appendChild(el("span", onSite ? "tag tag-gold" : "tag", t(onSite ? "browse.onGivouch" : "browse.noReviewsYet")));
     if (s.programs && s.programs.length) main.appendChild(programList(s));
     var actions = el("div", "find-actions");
-    actions.appendChild(link(t("find.checkVA") + " ↗", vaSearch(s.name), "btn btn-outline btn-sm", true));
+    actions.appendChild(link(t("find.checkVA") + " ↗", vaLink(s), "btn btn-outline btn-sm", true));
     var site = s.url && safeUrl(s.url);
     if (site) actions.appendChild(link(t("find.website") + " ↗", site, "btn btn-outline btn-sm", true));
     main.appendChild(actions);
