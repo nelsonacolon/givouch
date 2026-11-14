@@ -231,6 +231,8 @@
     actions.appendChild(link(t("find.checkVA") + " ↗", vaSearch(s.name), "btn btn-outline btn-sm", true));
     var site = s.url && safeUrl(s.url);
     if (site) actions.appendChild(link(t("find.website") + " ↗", site, "btn btn-outline btn-sm", true));
+    var src = s.source && safeUrl(s.source);
+    if (src && src !== site) actions.appendChild(link(t("find.source") + " ↗", src, "btn btn-outline btn-sm", true));
     main.appendChild(actions);
     c.appendChild(main);
     return c;

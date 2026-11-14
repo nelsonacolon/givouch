@@ -33,13 +33,13 @@ export default async function handler(req, res) {
 
   const prompt = `Find up to 6 schools in ${country} that offer ${level || "degree or certificate"} programs${field ? ` in ${field}` : ""} and that U.S. veterans could study at using VA education benefits (the VA approves some foreign schools for the GI Bill).
 
-Use web search. Prefer the VA's own list of approved foreign schools and the schools' official websites.
+Use web search. Good searches: the VA's list of approved foreign schools for ${country}; "${country} university ${field || ""} programs in English for international students"; and the schools' official websites.
 
 Return ONLY a JSON object, no other text:
-{"schools":[{"name":"official school name","program":"specific program name or null","city":"city or null","url":"official school or program page found in your search, or null","note":"one short sentence on why it fits, in ${lang === "es" ? "Spanish" : "English"}"}]}
+{"schools":[{"name":"official school name","program":"specific program name or null","city":"city or null","url":"the school's official website or program page, ONLY if it appeared in your search results, else null","source":"the exact URL of a search result that mentions this school","note":"one short sentence on why it fits, in ${lang === "es" ? "Spanish" : "English"}"}]}
 
 Rules:
-- Only include schools that appear in your search results. Never guess.
+- Only include schools that appear in your search results, and give the search result URL that mentions each one as "source". Never guess.
 - Do not include phone numbers, emails, staff names, tuition, Yellow Ribbon amounts or any dollar figures.
 - Do not state that a school is GI Bill approved unless the VA's own website says so; if unsure, say nothing about approval.
 - If you find nothing reliable, return {"schools":[]}.`;
@@ -55,9 +55,9 @@ Rules:
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1500,
+        max_tokens: 2500,
         messages: [{ role: "user", content: prompt }],
-        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
       }),
     });
     data = await r.json();
@@ -73,11 +73,13 @@ Rules:
   // Every page the search actually returned. Links not on this list are dropped.
   const sources = [];
   const seenHosts = new Set();
+  const seenUrls = new Set();
   for (const block of data.content || []) {
     if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
       for (const item of block.content) {
         if (item.type === "web_search_result" && /^https:\/\//.test(item.url || "")) {
           sources.push({ url: item.url, title: item.title || hostOf(item.url) });
+          seenUrls.add(item.url.replace(/\/$/, ""));
           seenHosts.add(hostOf(item.url));
         }
       }
@@ -94,18 +96,25 @@ Rules:
   const schools = (Array.isArray(parsed.schools) ? parsed.schools : []).slice(0, 6).map((s) => {
     let url = typeof s.url === "string" ? s.url.trim() : "";
     if (!/^https:\/\//.test(url) || !seenHosts.has(hostOf(url))) url = null;
+    // The page that backs this school must be one the search actually returned.
+    let source = typeof s.source === "string" ? s.source.trim() : "";
+    const sourceOk = /^https:\/\//.test(source) &&
+      (seenUrls.has(source.replace(/\/$/, "")) || seenHosts.has(hostOf(source)));
+    if (!sourceOk) source = null;
+    if (!source && url) source = url;
     return {
       name: cleanText(s.name, 120),
       program: cleanText(s.program, 120),
       city: cleanText(s.city, 80),
       country,
       url,
+      source,
       note: cleanText(s.note, 200),
     };
-  }).filter((s) => s.name && s.url); // drop anything we can't trace to a real search result
+  }).filter((s) => s.name && s.source); // drop anything we can't trace to a real search result
 
   // Only list sources that were used, to keep the panel short.
-  const usedHosts = new Set(schools.map((s) => s.url && hostOf(s.url)).filter(Boolean));
+  const usedHosts = new Set(schools.map((s) => hostOf(s.source)).filter(Boolean));
   const shown = sources.filter((s, i, arr) => arr.findIndex((x) => x.url === s.url) === i)
     .sort((a, b) => (usedHosts.has(hostOf(b.url)) ? 1 : 0) - (usedHosts.has(hostOf(a.url)) ? 1 : 0))
     .slice(0, 6);
