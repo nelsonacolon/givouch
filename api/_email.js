@@ -34,11 +34,11 @@ async function ensureTable(sql) {
 const TEXT = {
   en: {
     subject: (c) => `${c} is your GIVouch code`,
-    body: (c) => `Your GIVouch verification code is ${c}\n\nEnter it on the review form to send your review. It expires in ${CODE_MINUTES} minutes.\n\nIf you didn't ask for this, you can ignore this email.\n\nGIVouch — honest GI Bill program reviews by veterans and military families`,
+    body: (c) => `Your GIVouch verification code is ${c}\n\nEnter it on the review form to send your review. It expires in ${CODE_MINUTES} minutes.\n\nIf you didn't ask for this, you can ignore this email.\n\nGIVouch — honest reviews of programs paid for with veterans benefits, by veterans and military families`,
   },
   es: {
     subject: (c) => `${c} es tu código de GIVouch`,
-    body: (c) => `Tu código de verificación de GIVouch es ${c}\n\nIngrésalo en el formulario para enviar tu reseña. Vence en ${CODE_MINUTES} minutos.\n\nSi no lo pediste, puedes ignorar este correo.\n\nGIVouch — reseñas honestas de programas del GI Bill por veteranos y familias militares`,
+    body: (c) => `Tu código de verificación de GIVouch es ${c}\n\nIngrésalo en el formulario para enviar tu reseña. Vence en ${CODE_MINUTES} minutos.\n\nSi no lo pediste, puedes ignorar este correo.\n\nGIVouch — reseñas honestas de programas pagados con beneficios de veterano, por veteranos y familias militares`,
   },
 };
 
