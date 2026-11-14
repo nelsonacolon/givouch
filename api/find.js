@@ -1,4 +1,4 @@
-// GET /api/find?field=&level=&ownership=&state=&page=
+// GET /api/find?field=&level=&ownership=&state=&q=&page=   (q = school name search)
 // Searches U.S. schools and programs in the U.S. Department of Education's College Scorecard
 // (official data), then marks which ones already have reviews on GIVouch.
 // Uses SCORECARD_API_KEY if set, otherwise the shared DEMO_KEY (low limits; for testing only).
@@ -45,7 +45,9 @@ export default async function handler(req, res) {
   const ownership = Object.prototype.hasOwnProperty.call(OWNERSHIP, q.ownership) ? q.ownership : "";
   const state = US_STATES.includes(q.state) ? q.state : "";
   const page = Math.max(0, Math.min(50, parseInt(q.page, 10) || 0));
-  if (!field && !level && !ownership && !state) return res.status(400).json({ error: "choose_something" });
+  const name = typeof q.q === "string" ? q.q.replace(/[^\p{L}\p{N}\s'&.,-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 100) : "";
+  if (name && name.length < 2) return res.status(400).json({ error: "choose_something" });
+  if (!field && !level && !ownership && !state && !name) return res.status(400).json({ error: "choose_something" });
 
   const params = new URLSearchParams({
     api_key: process.env.SCORECARD_API_KEY || "DEMO_KEY",
@@ -61,6 +63,7 @@ export default async function handler(req, res) {
   if (level) params.set("latest.programs.cip_4_digit.credential.level", LEVELS[level]);
   if (ownership) params.set("school.ownership", OWNERSHIP[ownership]);
   if (state) params.set("school.state", state);
+  if (name) params.set("school.name", name);
 
   let data;
   try {
@@ -99,6 +102,8 @@ export default async function handler(req, res) {
         return true;
       })
       .slice(0, 6);
+    // A name-only search isn't about a field, so don't list random programs.
+    if (!wantCodes.size && !wantLevels.size) programs.length = 0;
     const done = latest.completion || {};
     const rate = pct(done.completion_rate_4yr_150nt) ?? pct(done.completion_rate_less_than_4yr_150nt);
     const net = latest.cost && latest.cost.avg_net_price ? latest.cost.avg_net_price.overall : null;

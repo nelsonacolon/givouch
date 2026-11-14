@@ -299,3 +299,7 @@ textarea.field-input { resize: vertical; }
 .find-results { margin-top: 24px; }
 .find-results .section-label { margin: 16px 0 12px; }
 .find-sources { margin-top: 16px; }
+
+#official-results { margin-top: 28px; }
+.official-head { margin: 0 0 4px; }
+#official-results .find-card .tag { display: inline-block; margin-top: 4px; }

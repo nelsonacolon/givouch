@@ -5,6 +5,21 @@
   var FORMATS = ["online", "in_person", "abroad"];
   var state = { q: "", formats: [], country: "", field: "", sort: "reviewed", offset: 0 };
   var last = null;
+  var VA_TOOL = "https://www.va.gov/education/gi-bill-comparison-tool/";
+  function vaSearch(name) {
+    var n = String(name || "").replace(/\s*-\s*Main Campus$/i, "").trim();
+    return n ? VA_TOOL + "schools-and-employers?search=name&name=" + encodeURIComponent(n) : VA_TOOL;
+  }
+  function safeUrl(u) {
+    try { var x = new URL(u); return x.protocol === "https:" || x.protocol === "http:" ? x.href : null; } catch (e) { return null; }
+  }
+  function link(text, href, cls, external) {
+    var a = el("a", cls, text);
+    a.href = href;
+    if (external) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
+    return a;
+  }
+  var official = null; // official-data matches for the current search
 
   function countryLabel(n) { return window.GVLabels ? window.GVLabels.country(n) : n; }
   function fieldLabel(n) { return window.GVLabels ? window.GVLabels.field(n) : n; }
@@ -91,6 +106,65 @@
     return c;
   }
 
+  // Schools from official U.S. data that matched the search but aren't on GIVouch yet.
+  function officialCard(s) {
+    var c = el("article", "program-card find-card");
+    var main = el("div", "program-main");
+    main.appendChild(el("h3", null, s.name));
+    main.appendChild(el("p", "program-where", [[s.city, s.state].filter(Boolean).join(", "), s.ownership ? t("own." + s.ownership) : null].filter(Boolean).join(" · ")));
+    var facts = [];
+    if (s.completionRate !== null && s.completionRate !== undefined) facts.push(t("find.completion") + ": " + s.completionRate + "%");
+    if (s.avgNetPrice) facts.push(t("find.netPrice") + ": $" + s.avgNetPrice.toLocaleString("en-US"));
+    if (facts.length) main.appendChild(el("p", "muted small", facts.join(" · ")));
+    main.appendChild(el("span", "tag", t("browse.noReviewsYet")));
+    var actions = el("div", "find-actions");
+    var p = new URLSearchParams();
+    p.set("school", s.name);
+    if (s.state) p.set("state", s.state);
+    if (s.city) p.set("city", s.city);
+    p.set("country", "United States");
+    actions.appendChild(link("+ " + t("find.addToGivouch"), "/add-program?" + p.toString(), "btn btn-outline btn-sm"));
+    actions.appendChild(link(t("find.checkVA") + " ↗", vaSearch(s.name), "btn btn-outline btn-sm", true));
+    var site = s.url && safeUrl(s.url);
+    if (site) actions.appendChild(link(t("find.website") + " ↗", site, "btn btn-outline btn-sm", true));
+    main.appendChild(actions);
+    c.appendChild(main);
+    return c;
+  }
+
+  function renderOfficial() {
+    var box = document.getElementById("official-results");
+    if (!box) return;
+    box.innerHTML = "";
+    if (!official || !official.length) return;
+    box.appendChild(el("h2", "section-label official-head", t("browse.officialTitle")));
+    box.appendChild(el("p", "muted small", t("browse.officialNote")));
+    official.forEach(function (s) { box.appendChild(officialCard(s)); });
+  }
+
+  function wantsOfficial() {
+    if (state.q.length < 2) return false;
+    if (state.country && state.country !== "United States") return false;
+    if (state.formats.length && state.formats.indexOf("abroad") >= 0 && state.formats.length === 1) return false;
+    return true;
+  }
+
+  function loadOfficial() {
+    official = null;
+    renderOfficial();
+    if (!wantsOfficial()) return;
+    var q = state.q;
+    fetch("/api/find?q=" + encodeURIComponent(q))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || q !== state.q) return;
+        // Skip schools already listed on GIVouch (they appear above).
+        official = (d.schools || []).filter(function (s) { return !(s.givouch && s.givouch.length); });
+        renderOfficial();
+      })
+      .catch(function () {});
+  }
+
   function render(data, append) {
     var list = document.getElementById("results");
     var count = document.getElementById("result-count");
@@ -98,7 +172,8 @@
     if (!append) list.innerHTML = "";
     data.programs.forEach(function (p) { list.appendChild(card(p)); });
     count.textContent = data.total + " " + t("browse.programs");
-    if (!data.total) list.appendChild(el("p", "notice", t("browse.none")));
+    if (!data.total && !wantsOfficial()) list.appendChild(el("p", "notice", t("browse.none")));
+    if (!data.total && wantsOfficial()) list.appendChild(el("p", "notice", t("browse.noneOnGivouch")));
     var shown = data.offset + data.programs.length;
     more.hidden = shown >= data.total;
     fillSelect(document.getElementById("f-country"), data.countries, state.country, countryLabel);
@@ -114,7 +189,7 @@
     }
     fetch(query(offset))
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(function (data) { last = data; render(data, append); })
+      .then(function (data) { last = data; render(data, append); if (!append) loadOfficial(); })
       .catch(function () {
         list.innerHTML = "";
         list.appendChild(el("p", "notice", t("browse.error")));
@@ -159,7 +234,7 @@
       refresh();
     });
     document.getElementById("show-more").addEventListener("click", function () { load(true); });
-    document.addEventListener("gv:lang", function () { if (last) render(last, false); });
+    document.addEventListener("gv:lang", function () { if (last) render(last, false); renderOfficial(); });
 
     load(false);
   });
