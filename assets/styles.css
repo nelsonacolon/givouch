@@ -314,3 +314,17 @@ textarea.field-input { resize: vertical; }
 .program-links { margin: 0; padding-left: 18px; columns: 2 260px; column-gap: 24px; }
 .program-links li { margin: 2px 0; break-inside: avoid; }
 .program-links .program-link, .review-facts .program-link { color: var(--link); text-decoration: underline; }
+
+/* Result count boxes at the top of Browse. */
+.result-stats { display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch; }
+.stat-box {
+  display: flex; flex-direction: column; justify-content: center; min-width: 130px;
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--navy-500);
+  border-radius: var(--radius); padding: 10px 16px; box-shadow: var(--shadow);
+}
+.stat-box.stat-gold { border-left-color: var(--gold-500); }
+.stat-num { font-size: 1.6rem; font-weight: 800; line-height: 1.1; color: var(--text); }
+.stat-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+.stat-wait { align-self: center; }
+[data-theme="dark"] .stat-box { border-left-color: #7fa3dc; }
+[data-theme="dark"] .stat-box.stat-gold { border-left-color: var(--gold-500); }

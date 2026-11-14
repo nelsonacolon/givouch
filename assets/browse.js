@@ -171,15 +171,30 @@
 
   // The count and message at the top. When nothing on GIVouch matches, they describe the
   // schools found in official data instead of saying "0 programs".
+  // One stat box: a big number with a label under it.
+  function stat(num, label, cls) {
+    var b = el("div", "stat-box" + (cls ? " " + cls : ""));
+    b.appendChild(el("span", "stat-num", String(num)));
+    b.appendChild(el("span", "stat-label", label));
+    return b;
+  }
+  function setStats(boxes) {
+    var count = document.getElementById("result-count");
+    count.innerHTML = "";
+    boxes.forEach(function (b) { count.appendChild(b); });
+  }
+
   function updateHeader() {
     if (!last) return;
     var list = document.getElementById("results");
-    var count = document.getElementById("result-count");
     var old = document.getElementById("none-notice");
     if (old) old.remove();
     var gv = last.total;
-    var gvText = gv + " " + t(gv === 1 ? "browse.program" : "browse.programs");
-    if (officialPending) { count.textContent = (gv ? gvText + " · " : "") + t("browse.searching"); return; }
+    var gvBox = function () { return stat(gv, t(gv === 1 ? "browse.program" : "browse.programs")); };
+    if (officialPending) {
+      setStats((gv ? [gvBox()] : []).concat([el("span", "muted stat-wait", t("browse.searching"))]));
+      return;
+    }
     if (official && official.length) {
       // Schools in official data, plus any GIVouch schools shown above that aren't in it (e.g. abroad).
       var names = {};
@@ -192,12 +207,15 @@
       var more = Object.keys(extra).length;
       var total = officialTotal + more, shown = official.length + more;
       var rv = last.reviewed || 0;
-      count.textContent = (total > shown ? shown + " " + t("browse.of") + " " + total : total) + " " +
-        t(total === 1 ? "browse.schoolFound" : "browse.schoolsFound") + " | " +
-        rv + " " + t(rv === 1 ? "browse.programReviewed" : "browse.programsReviewed");
+      var label = t(total === 1 ? "browse.schoolFound" : "browse.schoolsFound");
+      if (total > shown) label += " (" + t("browse.showing") + " " + shown + ")";
+      setStats([
+        stat(total, label),
+        stat(rv, t(rv === 1 ? "browse.programReviewed" : "browse.programsReviewed"), "stat-gold")
+      ]);
       return;
     }
-    count.textContent = gvText;
+    setStats([gvBox()]);
     if (gv) return;
     var none = el("p", "notice", t("browse.none"));
     none.id = "none-notice";
@@ -236,7 +254,6 @@
     var more = document.getElementById("show-more");
     if (!append) list.innerHTML = "";
     data.programs.forEach(function (p) { list.appendChild(card(p)); });
-    count.textContent = data.total + " " + t(data.total === 1 ? "browse.program" : "browse.programs");
     var shown = data.offset + data.programs.length;
     more.hidden = shown >= data.total;
     fillSelect(document.getElementById("f-country"), data.countries, state.country, countryLabel);
