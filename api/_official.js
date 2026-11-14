@@ -44,6 +44,7 @@ export function listPrograms(all) {
       title: String(p.title || "").replace(/\.$/, "").trim(),
       level: p.credential ? Number(p.credential.level) || null : null,
       credential: p.credential ? p.credential.title || null : null,
+      distance: p.distance === undefined || p.distance === null ? null : Number(p.distance),
     }))
     .filter((p) => {
       const k = p.code + "|" + p.level;

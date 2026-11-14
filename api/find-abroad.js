@@ -1,4 +1,4 @@
-// POST /api/find-abroad {country, field, level, lang, turnstileToken}
+// POST /api/find-abroad {country, field, level, format, lang, turnstileToken}
 // Schools outside the U.S. aren't in the College Scorecard, so this asks Claude to search the
 // web. Results are shown as UNVERIFIED suggestions: only links that came from the actual search
 // results are kept, and no contact details, amounts or approval claims are returned.
@@ -27,11 +27,13 @@ export default async function handler(req, res) {
   const field = FIELDS.includes(b.field) && b.field !== "Other" ? b.field : "";
   const level = LEVEL_NAMES[b.level] || "";
   const lang = b.lang === "es" ? "es" : "en";
+  const FORMAT_TEXT = { online: "fully online", in_person: "in person", hybrid: "hybrid (part online, part in person)" };
+  const format = FORMAT_TEXT[b.format] || "";
 
   const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim();
   if (!(await turnstileOk(b.turnstileToken, ip))) return res.status(400).json({ error: "turnstile" });
 
-  const prompt = `Find up to 6 schools in ${country} that offer ${level || "degree or certificate"} programs${field ? ` in ${field}` : ""} and that U.S. veterans could study at using VA education benefits (the VA approves some foreign schools for the GI Bill).
+  const prompt = `Find up to 6 schools in ${country} that offer ${level || "degree or certificate"} programs${field ? ` in ${field}` : ""}${format ? ` taught ${format}` : ""} and that U.S. veterans could study at using VA education benefits (the VA approves some foreign schools for the GI Bill).
 
 Use web search. Good searches: the VA's list of approved foreign schools for ${country}; "${country} university ${field || ""} programs in English for international students"; and the schools' official websites.
 

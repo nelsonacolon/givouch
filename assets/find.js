@@ -25,7 +25,7 @@
   var LEVELS = ["certificate", "associate", "bachelor", "master", "doctoral", "grad_certificate"];
   var LEVEL_NUM = { 1: "certificate", 2: "associate", 3: "bachelor", 4: "grad_certificate", 5: "master", 6: "doctoral", 7: "doctoral", 8: "grad_certificate" };
 
-  var f = { where: "us", field: "", level: "", ownership: "", state: "", country: "" };
+  var f = { where: "us", field: "", level: "", format: "", ownership: "", state: "", country: "" };
   var page = 0, loading = false, results = null, abroad = null;
   var tsKey = null, tsReady = false, tsToken = "";
 
@@ -113,7 +113,7 @@
 
   function canSearch() {
     if (f.where === "abroad") return Boolean(f.country) && (!tsKey || tsToken);
-    return Boolean(f.field || f.level || f.ownership || f.state);
+    return Boolean(f.field || f.level || f.format || f.ownership || f.state);
   }
   function updateButton() {
     var b = document.getElementById("find-btn");
@@ -141,6 +141,9 @@
       .sort(function (a, b) { return a[1].localeCompare(b[1], lang()); }));
     card.appendChild(labeled("browse.field", select("find-field", fieldItems, f.field, function (v) { f.field = v; updateButton(); })));
     card.appendChild(labeled("find.level", select("find-level", [["", any]].concat(LEVELS.map(function (l) { return [l, t("level." + l)]; })), f.level, function (v) { f.level = v; updateButton(); })));
+    card.appendChild(labeled("find.format", select("find-format",
+      [["", any], ["online", t("find.fmt.online")], ["in_person", t("find.fmt.in_person")], ["hybrid", t("find.fmt.hybrid")]],
+      f.format, function (v) { f.format = v; updateButton(); })));
 
     if (f.where === "us") {
       card.appendChild(labeled("find.ownership", select("find-ownership",
@@ -161,7 +164,7 @@
     var reset = el("button", "link-btn", t("find.reset"));
     reset.type = "button";
     reset.addEventListener("click", function () {
-      f = { where: f.where, field: "", level: "", ownership: "", state: "", country: "" };
+      f = { where: f.where, field: "", level: "", format: "", ownership: "", state: "", country: "" };
       results = null; abroad = null; page = 0; render();
     });
     nav.appendChild(reset);
@@ -244,7 +247,7 @@
   function resultsView(root) {
     if (loading && f.where === "abroad") { root.appendChild(el("p", "notice", t("find.abroadWait"))); return; }
     if (results) {
-      root.appendChild(el("p", "notice", t("find.usSource")));
+      root.appendChild(el("p", "notice", t("find.usSource") + (f.format === "online" || f.format === "hybrid" ? " " + t("find.fmtHint") : "")));
       root.appendChild(el("h2", "section-label", results.total + " " + t("find.schools")));
       if (!results.schools.length) root.appendChild(el("p", "notice", t("find.none")));
       results.schools.forEach(function (s) { root.appendChild(usCard(s)); });
@@ -305,12 +308,12 @@
     var req;
     if (f.where === "us") {
       var p = new URLSearchParams();
-      ["field", "level", "ownership", "state"].forEach(function (k) { if (f[k]) p.set(k, f[k]); });
+      ["field", "level", "format", "ownership", "state"].forEach(function (k) { if (f[k]) p.set(k, f[k]); });
       p.set("page", String(page));
       req = fetch("/api/find?" + p.toString());
     } else {
       req = fetch("/api/find-abroad", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country: f.country, field: f.field, level: f.level, lang: lang(), turnstileToken: tsToken }) });
+        body: JSON.stringify({ country: f.country, field: f.field, level: f.level, format: f.format, lang: lang(), turnstileToken: tsToken }) });
     }
     req.then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
       .then(function (res) {

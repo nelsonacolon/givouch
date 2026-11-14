@@ -1,4 +1,4 @@
-// GET /api/find?field=&level=&ownership=&state=&q=&page=   (q = school name search)
+// GET /api/find?field=&level=&format=&ownership=&state=&q=&page=   (q = school name search)
 // Searches U.S. schools and programs in the U.S. Department of Education's College Scorecard
 // (official data), then marks which ones already have reviews on GIVouch.
 // Uses SCORECARD_API_KEY if set, otherwise the shared DEMO_KEY (low limits; for testing only).
@@ -13,9 +13,19 @@ const PER_PAGE = 10;
 const FIELDS_PARAM = [
   "id", "school.name", "school.city", "school.state", "school.school_url", "school.ownership",
   "latest.completion.completion_rate_4yr_150nt", "latest.completion.completion_rate_less_than_4yr_150nt",
-  "latest.cost.avg_net_price.overall", "latest.programs.cip_4_digit",
+  "latest.cost.avg_net_price.overall", "latest.programs.cip_4_digit", "school.online_only",
 ].join(",");
 
+// How a program is taught, from what schools report to the Department of Education:
+// distance 1 = it can be completed fully online; 2 = some of its credentials can be.
+// "Hybrid" is the closest match the data has: offered both online and in person.
+function fitsFormat(p, format, onlineOnly) {
+  if (!format) return true;
+  const d = Number(p.distance) || 0;
+  if (format === "online") return onlineOnly || d === 1 || d === 2;
+  if (format === "hybrid") return !onlineOnly && d === 2;
+  return !onlineOnly && d !== 1; // in person
+}
 const pct = (v) => (typeof v === "number" ? Math.round(v * 100) : null);
 
 export default async function handler(req, res) {
@@ -28,10 +38,11 @@ export default async function handler(req, res) {
   const level = Object.prototype.hasOwnProperty.call(LEVELS, q.level) ? q.level : "";
   const ownership = Object.prototype.hasOwnProperty.call(OWNERSHIP, q.ownership) ? q.ownership : "";
   const state = US_STATES.includes(q.state) ? q.state : "";
+  const format = ["online", "in_person", "hybrid"].includes(q.format) ? q.format : "";
   const page = Math.max(0, Math.min(50, parseInt(q.page, 10) || 0));
   const name = typeof q.q === "string" ? q.q.replace(/[^\p{L}\p{N}\s'&.,-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 100) : "";
   if (name && name.length < 2) return res.status(400).json({ error: "choose_something" });
-  if (!field && !level && !ownership && !state && !name) return res.status(400).json({ error: "choose_something" });
+  if (!field && !level && !format && !ownership && !state && !name) return res.status(400).json({ error: "choose_something" });
 
   const params = new URLSearchParams({
     api_key: process.env.SCORECARD_API_KEY || "DEMO_KEY",
@@ -49,9 +60,16 @@ export default async function handler(req, res) {
   if (state) params.set("school.state", state);
   if (name) params.set("school.name", name);
 
+  // Ask the source for schools with a matching program format. If it doesn't accept this
+  // filter, search without it; the programs are checked below either way.
+  const DIST = { online: "1,2", hybrid: "2" };
+  const withFormat = new URLSearchParams(params);
+  if (DIST[format]) withFormat.set("latest.programs.cip_4_digit.distance", DIST[format]);
+
   let data;
   try {
-    const r = await fetch(`${BASE}?${params}`, { headers: { Accept: "application/json" } });
+    let r = await fetch(`${BASE}?${withFormat}`, { headers: { Accept: "application/json" } });
+    if (r.status === 400 && DIST[format]) r = await fetch(`${BASE}?${params}`, { headers: { Accept: "application/json" } });
     if (r.status === 429) return res.status(429).json({ error: "busy" });
     if (!r.ok) {
       console.error("scorecard error", r.status, (await r.text().catch(() => "")).slice(0, 300));
@@ -70,9 +88,11 @@ export default async function handler(req, res) {
     const latest = s.latest || {};
     // The API returns every program a school offers. A name search lists them all (so any
     // program can be reviewed); a field or level search keeps only the matching ones.
-    const nameOnly = !wantCodes.size && !wantLevels.size;
+    const nameOnly = !wantCodes.size && !wantLevels.size && !format;
+    const onlineOnly = Number(sc.online_only) === 1;
     const programs = listPrograms(latest.programs && latest.programs.cip_4_digit)
-      .filter((p) => (!wantCodes.size || wantCodes.has(p.code)) && (!wantLevels.size || wantLevels.has(String(p.level))));
+      .filter((p) => (!wantCodes.size || wantCodes.has(p.code)) && (!wantLevels.size || wantLevels.has(String(p.level))))
+      .filter((p) => fitsFormat(p, format, onlineOnly));
     if (!nameOnly) programs.splice(6);
     const done = latest.completion || {};
     const rate = pct(done.completion_rate_4yr_150nt) ?? pct(done.completion_rate_less_than_4yr_150nt);
@@ -90,7 +110,7 @@ export default async function handler(req, res) {
       url: url || null,
       programs,
     };
-  }).filter((s) => s.name && ((!wantCodes.size && !wantLevels.size) || s.programs.length));
+  }).filter((s) => s.name && ((!wantCodes.size && !wantLevels.size && !format) || s.programs.length));
 
   // Link to GIVouch when the school is already listed here.
   const sql = getSql();

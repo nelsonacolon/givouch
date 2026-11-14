@@ -117,9 +117,7 @@ export default async function handler(req, res) {
       FROM programs p
       LEFT JOIN reviews r ON r.program_id = p.id AND r.status = 'published'
       WHERE p.status = 'approved'
-        AND (${like}::text IS NULL OR p.school ILIKE ${like} OR p.program_name ILIKE ${like}
-             OR p.field_of_study ILIKE ${like} OR p.country ILIKE ${like} OR p.city ILIKE ${like}
-             OR to_jsonb(p)->>'state' ILIKE ${like})
+        AND (${like}::text IS NULL OR p.school ILIKE ${like}) -- the search bar looks up schools by name
         AND (${country || null}::text IS NULL OR p.country = ${country || null})
         AND (${field || null}::text IS NULL OR p.field_of_study = ${field || null})
         AND (cardinality(${formats}::text[]) = 0 OR p.format = ANY(${formats}::text[]))
