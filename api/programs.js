@@ -102,6 +102,9 @@ export default async function handler(req, res) {
   const field = clean(req.query.field);
   const formats = clean(req.query.format, 60).split(",").filter((f) => FORMATS.has(f));
   const sort = req.query.sort === "rating" ? "rating" : "reviewed";
+  // where=us → U.S. programs; where=abroad → programs outside the U.S.
+  const where = req.query.where === "us" || req.query.where === "abroad" ? req.query.where : null;
+  const usState = clean(req.query.state, 40) || null;
   const offset = Math.max(0, Math.min(10000, parseInt(req.query.offset, 10) || 0));
 
   const like = q ? `%${q}%` : null;
@@ -119,6 +122,8 @@ export default async function handler(req, res) {
       WHERE p.status = 'approved'
         AND (${like}::text IS NULL OR p.school ILIKE ${like}) -- the search bar looks up schools by name
         AND (${country || null}::text IS NULL OR p.country = ${country || null})
+        AND (${where}::text IS NULL OR (${where} = 'us') = (p.country = 'United States'))
+        AND (${usState}::text IS NULL OR upper(to_jsonb(p)->>'state') = upper(${usState}))
         AND (${field || null}::text IS NULL OR p.field_of_study = ${field || null})
         AND (cardinality(${formats}::text[]) = 0 OR p.format = ANY(${formats}::text[]))
       GROUP BY p.id

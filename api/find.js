@@ -93,7 +93,6 @@ export default async function handler(req, res) {
     const programs = listPrograms(latest.programs && latest.programs.cip_4_digit)
       .filter((p) => (!wantCodes.size || wantCodes.has(p.code)) && (!wantLevels.size || wantLevels.has(String(p.level))))
       .filter((p) => fitsFormat(p, format, onlineOnly));
-    if (!nameOnly) programs.splice(6);
     const done = latest.completion || {};
     const rate = pct(done.completion_rate_4yr_150nt) ?? pct(done.completion_rate_less_than_4yr_150nt);
     const net = latest.cost && latest.cost.avg_net_price ? latest.cost.avg_net_price.overall : null;

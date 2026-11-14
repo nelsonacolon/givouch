@@ -331,3 +331,9 @@ textarea.field-input { resize: vertical; }
 
 .official-pages { margin-top: 12px; align-items: center; }
 #official-results[aria-busy="true"] { opacity: 0.55; transition: opacity .15s; }
+
+/* Browse filter pane (same choices as Find). */
+.filter-where { margin-bottom: 14px; }
+.filter-label { display: block; font-weight: 700; margin-bottom: 6px; }
+.filter-where .choices { gap: 8px; }
+.filter-where .choice { padding: 8px 12px; font-size: 0.9rem; }

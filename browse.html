@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/assets/styles.css">
   <script src="/assets/app.js"></script>
   <script src="/assets/labels.js"></script>
+  <script src="/assets/lists.js"></script>
   <script src="/assets/browse.js"></script>
 </head>
 <body>
@@ -39,13 +40,7 @@
     <div class="browse-layout">
       <aside class="filters card" aria-label="Filters">
         <div class="filters-head"><strong data-i18n="browse.filters">Filters</strong><button type="button" id="clear-all" class="link-btn" data-i18n="browse.clear">Clear all</button></div>
-        <fieldset><legend data-i18n="browse.format">Format</legend>
-          <label><input type="checkbox" name="format" value="online"> <span data-i18n="fmt.online">Online</span></label>
-          <label><input type="checkbox" name="format" value="in_person"> <span data-i18n="fmt.in_person">In person</span></label>
-          <label><input type="checkbox" name="format" value="abroad"> <span data-i18n="fmt.abroad">Abroad</span></label>
-        </fieldset>
-        <label class="select-label"><span data-i18n="browse.country">Country</span><select id="f-country"></select></label>
-        <label class="select-label"><span data-i18n="browse.field">Field of study</span><select id="f-field"></select></label>
+        <div id="filter-body"></div>
       </aside>
       <section class="results-col">
         <div class="results-head">

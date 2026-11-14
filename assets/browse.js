@@ -2,8 +2,15 @@
 (function () {
   "use strict";
   var t = function (k) { return window.GV ? window.GV.t(k) : k; };
-  var FORMATS = ["online", "in_person", "abroad"];
-  var state = { q: "", formats: [], country: "", field: "", sort: "reviewed", offset: 0 };
+  var L = window.GVLists;
+  var FORMATS = ["online", "in_person", "hybrid"];
+  var OWNERSHIP = ["public", "nonprofit", "forprofit"];
+  // The same filters as the Find page. Field and state apply to programs on GIVouch and to
+  // schools from official data; degree level and type of school apply to official data only.
+  function blank(q) {
+    return { q: q || "", where: "us", field: "", level: "", format: "", ownership: "", usState: "", country: "", sort: "reviewed" };
+  }
+  var state = blank();
   var last = null;
   var VA_TOOL = "https://www.va.gov/education/gi-bill-comparison-tool/";
   function vaSearch(name) {
@@ -64,19 +71,28 @@
 
   function readUrl() {
     var p = new URLSearchParams(location.search);
-    state.q = (p.get("q") || "").slice(0, 100);
-    state.formats = (p.get("format") || "").split(",").filter(function (f) { return FORMATS.indexOf(f) >= 0; });
-    state.country = p.get("country") || "";
-    state.field = p.get("field") || "";
+    state = blank((p.get("q") || "").slice(0, 100));
+    var fmt = p.get("format") || "";
+    state.where = p.get("where") === "abroad" || fmt === "abroad" ? "abroad" : "us";
+    state.format = FORMATS.indexOf(fmt) >= 0 ? fmt : "";
+    state.field = L.FIELDS.indexOf(p.get("field")) >= 0 ? p.get("field") : "";
+    state.level = L.LEVELS.indexOf(p.get("level")) >= 0 ? p.get("level") : "";
+    state.ownership = OWNERSHIP.indexOf(p.get("type")) >= 0 ? p.get("type") : "";
+    state.usState = L.STATES.indexOf(p.get("state")) >= 0 ? p.get("state") : "";
+    state.country = state.where === "abroad" ? (p.get("country") || "").slice(0, 60) : "";
     state.sort = p.get("sort") === "rating" ? "rating" : "reviewed";
   }
 
   function writeUrl() {
     var p = new URLSearchParams();
     if (state.q) p.set("q", state.q);
-    if (state.formats.length) p.set("format", state.formats.join(","));
-    if (state.country) p.set("country", state.country);
+    if (state.where === "abroad") p.set("where", "abroad");
     if (state.field) p.set("field", state.field);
+    if (state.level) p.set("level", state.level);
+    if (state.format) p.set("format", state.format);
+    if (state.where === "us" && state.ownership) p.set("type", state.ownership);
+    if (state.where === "us" && state.usState) p.set("state", state.usState);
+    if (state.where === "abroad" && state.country) p.set("country", state.country);
     if (state.sort !== "reviewed") p.set("sort", state.sort);
     var qs = p.toString();
     history.replaceState(null, "", "/browse" + (qs ? "?" + qs : ""));
@@ -85,28 +101,81 @@
   function query(offset) {
     var p = new URLSearchParams();
     if (state.q) p.set("q", state.q);
-    if (state.formats.length) p.set("format", state.formats.join(","));
-    if (state.country) p.set("country", state.country);
+    p.set("where", state.where);
+    if (state.format === "online" || state.format === "in_person") p.set("format", state.format);
     if (state.field) p.set("field", state.field);
+    if (state.where === "us" && state.usState) p.set("state", state.usState);
+    if (state.where === "abroad" && state.country) p.set("country", state.country);
     p.set("sort", state.sort);
     p.set("offset", String(offset));
     return "/api/programs?" + p.toString();
   }
 
-  function fillSelect(sel, values, current, label) {
-    sel.innerHTML = "";
-    var any = el("option", null, t("browse.any"));
-    any.value = "";
-    sel.appendChild(any);
-    values.map(function (v) { return { value: v, text: label(v) }; })
-      .sort(function (a, b) { return a.text.localeCompare(b.text); })
-      .forEach(function (item) {
-      var v = item.value;
-      var o = el("option", null, item.text);
-      o.value = v;
-      if (v === current) o.selected = true;
+  function select(id, items, value, onChange) {
+    var sel = el("select");
+    sel.id = id;
+    items.forEach(function (it) {
+      var o = el("option", null, it[1]); o.value = it[0];
+      if (it[0] === value) o.selected = true;
       sel.appendChild(o);
     });
+    sel.addEventListener("change", function () { onChange(sel.value); });
+    return sel;
+  }
+  function labeled(key, control) {
+    var l = el("label", "select-label");
+    l.appendChild(el("span", null, t(key)));
+    l.appendChild(control);
+    return l;
+  }
+
+  // The filter pane: same choices as the Find page.
+  function renderFilters() {
+    var box = document.getElementById("filter-body");
+    if (!box) return;
+    box.innerHTML = "";
+    var lang = window.GV ? window.GV.lang() : "en";
+    var any = t("find.any");
+
+    var whereBox = el("div", "filter-where");
+    whereBox.appendChild(el("span", "filter-label", t("find.where")));
+    var choices = el("div", "choices");
+    [["us", "find.whereUS"], ["abroad", "find.whereAbroad"]].forEach(function (c) {
+      var b = el("button", "choice" + (state.where === c[0] ? " on" : ""), t(c[1]));
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(state.where === c[0]));
+      b.addEventListener("click", function () {
+        if (state.where === c[0]) return;
+        state.where = c[0]; state.usState = ""; state.ownership = ""; state.country = "";
+        renderFilters(); refresh();
+      });
+      choices.appendChild(b);
+    });
+    whereBox.appendChild(choices);
+    box.appendChild(whereBox);
+
+    var fields = [["", any]].concat(L.FIELDS.map(function (v) { return [v, fieldLabel(v)]; })
+      .sort(function (a, b) { return a[1].localeCompare(b[1], lang); }));
+    box.appendChild(labeled("browse.field", select("f-field", fields, state.field, function (v) { state.field = v; refresh(); })));
+    box.appendChild(labeled("find.level", select("f-level", [["", any]].concat(L.LEVELS.map(function (l) { return [l, t("level." + l)]; })),
+      state.level, function (v) { state.level = v; refresh(); })));
+    box.appendChild(labeled("find.format", select("f-format",
+      [["", any], ["online", t("find.fmt.online")], ["in_person", t("find.fmt.in_person")], ["hybrid", t("find.fmt.hybrid")]],
+      state.format, function (v) { state.format = v; refresh(); })));
+    if (state.where === "us") {
+      box.appendChild(labeled("find.ownership", select("f-type",
+        [["", any]].concat(OWNERSHIP.map(function (o) { return [o, t("own." + o)]; })),
+        state.ownership, function (v) { state.ownership = v; refresh(); })));
+      box.appendChild(labeled("ap.state", select("f-state", [["", t("find.anyState")]].concat(L.STATES.map(function (x) { return [x, x]; })),
+        state.usState, function (v) { state.usState = v; refresh(); })));
+    } else {
+      box.appendChild(labeled("browse.country", select("f-country", [["", any]].concat(L.countries(lang)),
+        state.country, function (v) { state.country = v; refresh(); })));
+      var hint = el("p", "muted small");
+      hint.appendChild(document.createTextNode(t("browse.abroadHint") + " "));
+      hint.appendChild(link(t("find.cta"), "/find", null));
+      box.appendChild(hint);
+    }
   }
 
   function card(p) {
@@ -237,11 +306,21 @@
     list.appendChild(none);
   }
 
+  // Official data covers U.S. schools; it's searched for a school name or any filter.
   function wantsOfficial() {
-    if (state.q.length < 2) return false;
-    if (state.country && state.country !== "United States") return false;
-    if (state.formats.length && state.formats.indexOf("abroad") >= 0 && state.formats.length === 1) return false;
-    return true;
+    if (state.where !== "us") return false;
+    return state.q.length >= 2 || Boolean(state.field || state.level || state.format || state.ownership || state.usState);
+  }
+  function officialQuery(page) {
+    var p = new URLSearchParams();
+    if (state.q.length >= 2) p.set("q", state.q);
+    if (state.field) p.set("field", state.field);
+    if (state.level) p.set("level", state.level);
+    if (state.format) p.set("format", state.format);
+    if (state.ownership) p.set("ownership", state.ownership);
+    if (state.usState) p.set("state", state.usState);
+    p.set("page", String(page));
+    return p.toString();
   }
 
   function loadOfficial(page, scroll) {
@@ -250,13 +329,13 @@
     officialPending = wantsOfficial();
     if (!scroll) renderOfficial();
     if (!officialPending) return;
-    var q = state.q;
+    var q = officialQuery(page);
     var box = document.getElementById("official-results");
     if (scroll && box) box.setAttribute("aria-busy", "true");
-    fetch("/api/find?q=" + encodeURIComponent(q) + "&page=" + page)
+    fetch("/api/find?" + q)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (q !== state.q) return;
+        if (q !== officialQuery(page)) return;
         officialPending = false;
         official = (d && d.schools) || [];
         officialTotal = (d && d.total) || official.length;
@@ -266,7 +345,7 @@
         if (box) box.removeAttribute("aria-busy");
         if (scroll && box) box.scrollIntoView({ behavior: "smooth", block: "start" });
       })
-      .catch(function () { if (box) box.removeAttribute("aria-busy"); if (q === state.q) { officialPending = false; renderOfficial(); } });
+      .catch(function () { if (box) box.removeAttribute("aria-busy"); if (q === officialQuery(page)) { officialPending = false; renderOfficial(); } });
   }
 
   function render(data, append) {
@@ -277,8 +356,6 @@
     data.programs.forEach(function (p) { list.appendChild(card(p)); });
     var shown = data.offset + data.programs.length;
     more.hidden = shown >= data.total;
-    fillSelect(document.getElementById("f-country"), data.countries, state.country, countryLabel);
-    fillSelect(document.getElementById("f-field"), data.fields, state.field, fieldLabel);
   }
 
   function load(append) {
@@ -301,10 +378,8 @@
 
   function syncControls() {
     document.getElementById("q").value = state.q;
-    document.querySelectorAll("input[name=format]").forEach(function (cb) {
-      cb.checked = state.formats.indexOf(cb.value) >= 0;
-    });
     document.getElementById("sort").value = state.sort;
+    renderFilters();
   }
 
   function refresh() { writeUrl(); load(false); }
@@ -318,24 +393,14 @@
       state.q = document.getElementById("q").value.trim().slice(0, 100);
       refresh();
     });
-    document.querySelectorAll("input[name=format]").forEach(function (cb) {
-      cb.addEventListener("change", function () {
-        state.formats = Array.prototype.filter.call(
-          document.querySelectorAll("input[name=format]:checked"), function () { return true; }
-        ).map(function (x) { return x.value; });
-        refresh();
-      });
-    });
-    document.getElementById("f-country").addEventListener("change", function (e) { state.country = e.target.value; refresh(); });
-    document.getElementById("f-field").addEventListener("change", function (e) { state.field = e.target.value; refresh(); });
     document.getElementById("sort").addEventListener("change", function (e) { state.sort = e.target.value; refresh(); });
     document.getElementById("clear-all").addEventListener("click", function () {
-      state = { q: state.q, formats: [], country: "", field: "", sort: "reviewed", offset: 0 };
+      state = blank(state.q);
       syncControls();
       refresh();
     });
     document.getElementById("show-more").addEventListener("click", function () { load(true); });
-    document.addEventListener("gv:lang", function () { if (last) render(last, false); renderOfficial(); });
+    document.addEventListener("gv:lang", function () { renderFilters(); if (last) render(last, false); renderOfficial(); });
 
     load(false);
   });
