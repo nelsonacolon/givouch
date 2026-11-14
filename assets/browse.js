@@ -177,15 +177,26 @@
     var count = document.getElementById("result-count");
     var old = document.getElementById("none-notice");
     if (old) old.remove();
-    if (last.total) { count.textContent = last.total + " " + t(last.total === 1 ? "browse.program" : "browse.programs"); return; }
-    if (officialPending) { count.textContent = t("browse.searching"); return; }
+    var gv = last.total;
+    var gvText = gv + " " + t(gv === 1 ? "browse.program" : "browse.programs");
+    if (officialPending) { count.textContent = (gv ? gvText + " · " : "") + t("browse.searching"); return; }
     if (official && official.length) {
-      var n = official.length;
-      count.textContent = (officialTotal > n ? n + " " + t("browse.of") + " " + officialTotal : n) + " " +
-        t(officialTotal === 1 ? "browse.school" : "browse.schools");
+      // Schools in official data, plus any GIVouch schools shown above that aren't in it (e.g. abroad).
+      var names = {};
+      official.forEach(function (s) { names[String(s.name).toLowerCase()] = true; });
+      var extra = {};
+      (last.programs || []).forEach(function (p) {
+        var k = String(p.school || "").toLowerCase();
+        if (k && !names[k]) extra[k] = true;
+      });
+      var more = Object.keys(extra).length;
+      var total = officialTotal + more, shown = official.length + more;
+      count.textContent = (total > shown ? shown + " " + t("browse.of") + " " + total : total) + " " +
+        t(total === 1 ? "browse.school" : "browse.schools") + (gv ? " · " + gvText + " " + t("browse.onGivouchCount") : "");
       return;
     }
-    count.textContent = "0 " + t("browse.programs");
+    count.textContent = gvText;
+    if (gv) return;
     var none = el("p", "notice", t("browse.none"));
     none.id = "none-notice";
     list.appendChild(none);
