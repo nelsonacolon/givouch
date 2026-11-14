@@ -2,23 +2,12 @@
 // "Authorization: Bearer <token>". Without ADMIN_TOKEN set, moderation is off.
 //   GET  /api/admin/reviews?status=pending   → reviews waiting for a decision (includes emails)
 //   POST /api/admin/reviews {id, action}     → action: "publish" or "reject"
-import { timingSafeEqual, createHash } from "node:crypto";
 import { getSql } from "../_db.js";
-
-function authorized(req) {
-  const token = process.env.ADMIN_TOKEN;
-  if (!token || token.length < 16) return false;
-  const header = req.headers.authorization || "";
-  const given = header.startsWith("Bearer ") ? header.slice(7) : "";
-  // Compare hashes so the check takes the same time whatever was typed.
-  const a = createHash("sha256").update(given).digest();
-  const b = createHash("sha256").update(token).digest();
-  return timingSafeEqual(a, b);
-}
+import { adminReady, authorized } from "./_auth.js";
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
-  if (!process.env.ADMIN_TOKEN || process.env.ADMIN_TOKEN.length < 16) {
+  if (!adminReady()) {
     return res.status(503).json({ error: "Moderation is not set up (ADMIN_TOKEN missing or too short)" });
   }
   if (!authorized(req)) return res.status(401).json({ error: "Wrong password" });

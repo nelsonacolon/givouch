@@ -39,3 +39,8 @@ Open `/api/health` on the deployed site. It should show `"ok": true` and `"anthr
 - Every review is saved as **pending** and only appears after it is published on `/admin`.
 - `/admin` needs an `ADMIN_TOKEN` environment variable in Vercel (16+ characters, mark it Sensitive). Redeploy after adding it.
 - One review per email per program. A hidden field blocks simple bots. Cloudflare Turnstile is checked automatically once `TURNSTILE_SECRET_KEY` is set.
+
+## Suggested programs
+- Visitors suggest missing programs at `/add-program` (linked from Browse: "Can't find it? Add a program").
+- Suggestions are saved as **pending**. Approve or reject them on `/admin` → **Programs**. Check the school against the VA's GI Bill Comparison Tool before approving.
+- Fields of study come from a fixed list (`api/_lists.js`) so they can be translated.

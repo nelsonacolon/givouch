@@ -280,3 +280,10 @@ textarea.field-input { resize: vertical; }
 .thanks h1 { margin-top: 0; }
 
 .ts-box { margin: 16px 0 0; min-height: 65px; }
+
+/* Add a program */
+.ap-card { padding: 22px; margin-top: 16px; }
+.ap-field { margin-bottom: 20px; }
+.ap-field:last-child { margin-bottom: 0; }
+.ap-field select.field-input { appearance: auto; }
+.ap-field p.q-label { margin: 0 0 12px; }

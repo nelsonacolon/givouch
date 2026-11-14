@@ -41,6 +41,7 @@
     var token = "";
     try { token = sessionStorage.getItem(KEY) || ""; } catch (e) {}
     var status = "pending";
+    var kind = "reviews"; // or "programs"
     var root = document.getElementById("admin");
     var logout = document.getElementById("logout");
 
@@ -52,7 +53,7 @@
     }
 
     function api(method, body) {
-      return fetch("/api/admin/reviews" + (method === "GET" ? "?status=" + status : ""), {
+      return fetch("/api/admin/" + kind + (method === "GET" ? "?status=" + status : ""), {
         method: method,
         headers: Object.assign({ Authorization: "Bearer " + token }, body ? { "Content-Type": "application/json" } : {}),
         body: body ? JSON.stringify(body) : undefined
@@ -125,26 +126,71 @@
       return c;
     }
 
-    function render(reviews) {
+    function programCard(p) {
+      var c = el("article", "card mod-card");
+      c.appendChild(el("h3", null, p.program_name + " — " + p.school));
+      c.appendChild(el("p", "muted", "Program #" + p.id + " · " + new Date(p.created_at).toLocaleString() + (p.is_sample ? " · SAMPLE" : "")));
+      var dl = el("dl");
+      row(dl, "School type", p.school_type);
+      row(dl, "Field of study", p.field_of_study);
+      row(dl, "Format", p.format);
+      row(dl, "Location", [p.city, p.state, p.country].filter(Boolean).join(", "));
+      c.appendChild(dl);
+      var check = el("p", "muted");
+      if (p.va_listing_url && /^https:\/\//.test(p.va_listing_url)) {
+        check.appendChild(document.createTextNode("Check approval: "));
+        var a = el("a", null, p.va_listing_url); a.href = p.va_listing_url; a.target = "_blank"; a.rel = "noopener noreferrer";
+        check.appendChild(a);
+      } else {
+        check.appendChild(document.createTextNode("No VA link given. Check it in the "));
+        var t = el("a", null, "GI Bill Comparison Tool"); t.href = "https://www.va.gov/education/gi-bill-comparison-tool/"; t.target = "_blank"; t.rel = "noopener noreferrer";
+        check.appendChild(t); check.appendChild(document.createTextNode(" before approving."));
+      }
+      c.appendChild(check);
+      var actions = el("div", "mod-actions");
+      [["approve", "Approve", "btn btn-primary"], ["reject", "Reject", "btn btn-reject"]].forEach(function (a) {
+        if ((a[0] === "approve" && p.status === "approved") || (a[0] === "reject" && p.status === "rejected")) return;
+        var b = el("button", a[2], a[1]); b.type = "button";
+        b.addEventListener("click", function () {
+          b.disabled = true;
+          api("POST", { id: p.id, action: a[0] }).then(function (res) {
+            if (res.status === 200) load(); else { b.disabled = false; alert(res.d.error || "Failed"); }
+          });
+        });
+        actions.appendChild(b);
+      });
+      c.appendChild(actions);
+      return c;
+    }
+
+    function render(items) {
       logout.hidden = false;
       root.innerHTML = "";
       root.appendChild(el("h1", null, "Moderation"));
+      var kinds = el("div", "tabs");
+      [["reviews", "Reviews"], ["programs", "Programs"]].forEach(function (k) {
+        var b = el("button", "tab" + (kind === k[0] ? " on" : ""), k[1]); b.type = "button";
+        b.addEventListener("click", function () { kind = k[0]; status = "pending"; load(); });
+        kinds.appendChild(b);
+      });
+      root.appendChild(kinds);
       var tabs = el("div", "tabs");
-      [["pending", "Waiting"], ["published", "Published"], ["rejected", "Rejected"]].forEach(function (s) {
+      var done = kind === "reviews" ? ["published", "Published"] : ["approved", "Approved"];
+      [["pending", "Waiting"], done, ["rejected", "Rejected"]].forEach(function (s) {
         var b = el("button", "tab" + (status === s[0] ? " on" : ""), s[1]); b.type = "button";
         b.addEventListener("click", function () { status = s[0]; load(); });
         tabs.appendChild(b);
       });
       root.appendChild(tabs);
-      if (!reviews.length) root.appendChild(el("p", "notice", "Nothing here right now."));
-      reviews.forEach(function (r) { root.appendChild(card(r)); });
+      if (!items.length) root.appendChild(el("p", "notice", "Nothing here right now."));
+      items.forEach(function (r) { root.appendChild(kind === "reviews" ? card(r) : programCard(r)); });
     }
 
     function load() {
       if (!token) return login();
       root.innerHTML = "<p class='muted'>Loading…</p>";
       api("GET").then(function (res) {
-        if (res.status === 200) return render(res.d.reviews);
+        if (res.status === 200) return render(kind === "reviews" ? res.d.reviews : res.d.programs);
         if (res.status === 401) { try { sessionStorage.removeItem(KEY); } catch (e) {} token = ""; return login("Wrong password."); }
         login(res.d.error || "Something went wrong.");
       }).catch(function () { login("Couldn't reach the server."); });

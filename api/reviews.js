@@ -1,6 +1,7 @@
 // POST /api/reviews — save a new review. Every review starts as "pending" and only
 // appears on the site after it is approved on the moderation page.
 import { getSql } from "./_db.js";
+import { turnstileOk } from "./_lists.js";
 
 const STARS = (v) => Number.isInteger(v) && v >= 1 && v <= 5;
 const ONE_OF = (list) => (v) => list.includes(v);
@@ -15,23 +16,6 @@ function text(v, max) {
   if (typeof v !== "string") return null;
   const t = v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim();
   return t ? t.slice(0, max) : null;
-}
-
-async function turnstileOk(token, ip) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true; // Not set up yet; the honeypot and duplicate check still apply.
-  if (!token) return false;
-  try {
-    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ secret, response: token, remoteip: ip || "" }),
-    });
-    const d = await r.json();
-    return Boolean(d.success);
-  } catch {
-    return false;
-  }
 }
 
 export default async function handler(req, res) {
