@@ -500,7 +500,11 @@
   };
 
   var root = document.documentElement;
-  var lang = load("gv-lang") || ((navigator.language || "en").toLowerCase().indexOf("es") === 0 ? "es" : "en");
+  // A link can choose the language, e.g. /find?lang=es (used by MilClarity).
+  var urlLang = null;
+  try { urlLang = new URLSearchParams(location.search).get("lang"); } catch (e) {}
+  if (urlLang === "en" || urlLang === "es") save("gv-lang", urlLang);
+  var lang = (urlLang === "en" || urlLang === "es" ? urlLang : null) || load("gv-lang") || ((navigator.language || "en").toLowerCase().indexOf("es") === 0 ? "es" : "en");
   var theme = load("gv-theme") ||
     (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 
