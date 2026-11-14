@@ -20,6 +20,8 @@
     return a;
   }
   var official = null; // official-data matches for the current search
+  var officialTotal = 0;
+  var officialPending = false;
   var LEVEL_NUM = { 1: "certificate", 2: "associate", 3: "bachelor", 4: "grad_certificate", 5: "master", 6: "doctoral", 7: "doctoral", 8: "grad_certificate" };
   var LEVEL_ORDER = ["certificate", "associate", "bachelor", "grad_certificate", "master", "doctoral"];
   function reviewLink(s, p) {
@@ -160,10 +162,33 @@
     var box = document.getElementById("official-results");
     if (!box) return;
     box.innerHTML = "";
+    updateHeader();
     if (!official || !official.length) return;
     box.appendChild(el("h2", "section-label official-head", t("browse.officialTitle")));
     box.appendChild(el("p", "muted small", t("browse.officialNote")));
     official.forEach(function (s) { box.appendChild(officialCard(s)); });
+  }
+
+  // The count and message at the top. When nothing on GIVouch matches, they describe the
+  // schools found in official data instead of saying "0 programs".
+  function updateHeader() {
+    if (!last) return;
+    var list = document.getElementById("results");
+    var count = document.getElementById("result-count");
+    var old = document.getElementById("none-notice");
+    if (old) old.remove();
+    if (last.total) { count.textContent = last.total + " " + t(last.total === 1 ? "browse.program" : "browse.programs"); return; }
+    if (officialPending) { count.textContent = t("browse.searching"); return; }
+    if (official && official.length) {
+      var n = official.length;
+      count.textContent = (officialTotal > n ? n + " " + t("browse.of") + " " + officialTotal : n) + " " +
+        t(officialTotal === 1 ? "browse.school" : "browse.schools");
+      return;
+    }
+    count.textContent = "0 " + t("browse.programs");
+    var none = el("p", "notice", t("browse.none"));
+    none.id = "none-notice";
+    list.appendChild(none);
   }
 
   function wantsOfficial() {
@@ -175,17 +200,21 @@
 
   function loadOfficial() {
     official = null;
+    officialTotal = 0;
+    officialPending = wantsOfficial();
     renderOfficial();
-    if (!wantsOfficial()) return;
+    if (!officialPending) return;
     var q = state.q;
     fetch("/api/find?q=" + encodeURIComponent(q))
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (!d || q !== state.q) return;
-        official = d.schools || [];
+        if (q !== state.q) return;
+        officialPending = false;
+        official = (d && d.schools) || [];
+        officialTotal = (d && d.total) || official.length;
         renderOfficial();
       })
-      .catch(function () {});
+      .catch(function () { if (q === state.q) { officialPending = false; renderOfficial(); } });
   }
 
   function render(data, append) {
@@ -194,9 +223,7 @@
     var more = document.getElementById("show-more");
     if (!append) list.innerHTML = "";
     data.programs.forEach(function (p) { list.appendChild(card(p)); });
-    count.textContent = data.total + " " + t("browse.programs");
-    if (!data.total && !wantsOfficial()) list.appendChild(el("p", "notice", t("browse.none")));
-    if (!data.total && wantsOfficial()) list.appendChild(el("p", "notice", t("browse.noneOnGivouch")));
+    count.textContent = data.total + " " + t(data.total === 1 ? "browse.program" : "browse.programs");
     var shown = data.offset + data.programs.length;
     more.hidden = shown >= data.total;
     fillSelect(document.getElementById("f-country"), data.countries, state.country, countryLabel);
@@ -212,7 +239,7 @@
     }
     fetch(query(offset))
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(function (data) { last = data; render(data, append); if (!append) loadOfficial(); })
+      .then(function (data) { last = data; render(data, append); if (!append) loadOfficial(); else updateHeader(); })
       .catch(function () {
         list.innerHTML = "";
         list.appendChild(el("p", "notice", t("browse.error")));
