@@ -16,6 +16,18 @@
   var f = { school: "", programName: "", schoolType: "", format: "", field: "", country: "United States",
             state: "", city: "", vaUrl: "", website: "" };
   var sending = false, done = false;
+  // Prefill from "Add to GIVouch" links on the Find schools page.
+  (function () {
+    var q = new URLSearchParams(location.search);
+    function take(k, max) { var v = q.get(k); return v ? v.slice(0, max) : ""; }
+    if (take("school", 120)) f.school = take("school", 120);
+    if (take("program", 120)) f.programName = take("program", 120);
+    if (FIELDS.indexOf(q.get("field")) >= 0) f.field = q.get("field");
+    if (take("country", 60)) f.country = take("country", 60);
+    if (STATES.indexOf(q.get("state")) >= 0) f.state = q.get("state");
+    if (take("city", 80)) f.city = take("city", 80);
+    if (f.country && f.country !== "United States") f.format = "abroad";
+  })();
   var tsKey = null, tsReady = false, tsToken = "";
 
   function el(tag, cls, text) {

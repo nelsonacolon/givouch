@@ -289,3 +289,13 @@ textarea.field-input { resize: vertical; }
 .ap-field p.q-label { margin: 0 0 12px; }
 
 .code-input { max-width: 200px; font-size: 1.4rem; letter-spacing: 6px; text-align: center; }
+
+/* Find schools */
+.find-card .program-main { width: 100%; }
+.find-card h3 { margin: 0 0 4px; }
+.find-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.btn-sm { padding: 7px 14px; font-size: 0.85rem; }
+.notice-warn { border-left-color: #c2410c; }
+.find-results { margin-top: 24px; }
+.find-results .section-label { margin: 16px 0 12px; }
+.find-sources { margin-top: 16px; }

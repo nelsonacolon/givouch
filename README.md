@@ -50,3 +50,8 @@ Open `/api/health` on the deployed site. It should show `"ok": true` and `"anthr
 - On the last step of the review form, the reviewer gets a 6-digit code by email (15 minutes, 5 tries, 3 codes per hour per email).
 - Sender is `EMAIL_FROM` if set, otherwise `GIVouch <onboarding@resend.dev>`. Resend's test sender can only email the Resend account owner, so real visitors need a verified domain first.
 - Codes are stored hashed in the `email_codes` table, which is created automatically.
+
+## Find schools & programs (/find)
+- **United States:** official U.S. Department of Education College Scorecard data (`api/find.js`). Set `SCORECARD_API_KEY` (free from api.data.gov) in Vercel; without it the shared `DEMO_KEY` is used, which has very low limits.
+- **Abroad:** Claude web search (`api/find-abroad.js`), shown as *unverified*. Only results with a link that came from the actual search are kept; no contact details or dollar amounts. Uses `ANTHROPIC_API_KEY` (model can be changed with `ANTHROPIC_MODEL`), protected by Turnstile, up to 3 web searches per request.
+- Each result links to the VA's GI Bill Comparison Tool, shows GIVouch reviews when the school is listed, and offers "Add to GIVouch" (prefills `/add-program`).
