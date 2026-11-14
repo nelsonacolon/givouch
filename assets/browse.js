@@ -21,6 +21,7 @@
   }
   var official = null; // official-data matches for the current search
   var officialTotal = 0;
+  var officialPage = 0, officialPerPage = 10;
   var officialPending = false;
   var LEVEL_NUM = { 1: "certificate", 2: "associate", 3: "bachelor", 4: "grad_certificate", 5: "master", 6: "doctoral", 7: "doctoral", 8: "grad_certificate" };
   var LEVEL_ORDER = ["certificate", "associate", "bachelor", "grad_certificate", "master", "doctoral"];
@@ -167,6 +168,21 @@
     box.appendChild(el("h2", "section-label official-head", t("browse.officialTitle")));
     box.appendChild(el("p", "muted small", t("browse.officialNote")));
     official.forEach(function (s) { box.appendChild(officialCard(s)); });
+    // Page through every matching school, 10 at a time.
+    var pages = Math.min(Math.ceil(officialTotal / officialPerPage), 50);
+    if (pages > 1) {
+      var nav = el("div", "rv-nav official-pages");
+      var prev = el("button", "btn btn-outline btn-sm", "‹ " + t("browse.prevPage")); prev.type = "button";
+      prev.style.visibility = officialPage > 0 ? "visible" : "hidden";
+      prev.addEventListener("click", function () { loadOfficial(officialPage - 1, true); });
+      var next = el("button", "btn btn-outline btn-sm", t("browse.nextPage") + " ›"); next.type = "button";
+      next.style.visibility = officialPage < pages - 1 ? "visible" : "hidden";
+      next.addEventListener("click", function () { loadOfficial(officialPage + 1, true); });
+      nav.appendChild(prev);
+      nav.appendChild(el("span", "muted small", t("browse.page") + " " + (officialPage + 1) + " " + t("browse.of") + " " + pages));
+      nav.appendChild(next);
+      box.appendChild(nav);
+    }
   }
 
   // The count and message at the top. When nothing on GIVouch matches, they describe the
@@ -208,7 +224,6 @@
       var total = officialTotal + more, shown = official.length + more;
       var rv = last.reviewed || 0;
       var label = t(total === 1 ? "browse.schoolFound" : "browse.schoolsFound");
-      if (total > shown) label += " (" + t("browse.showing") + " " + shown + ")";
       setStats([
         stat(total, label),
         stat(rv, t(rv === 1 ? "browse.programReviewed" : "browse.programsReviewed"), "stat-gold")
@@ -229,23 +244,29 @@
     return true;
   }
 
-  function loadOfficial() {
-    official = null;
-    officialTotal = 0;
+  function loadOfficial(page, scroll) {
+    page = page || 0;
+    if (!scroll) { official = null; officialTotal = 0; }
     officialPending = wantsOfficial();
-    renderOfficial();
+    if (!scroll) renderOfficial();
     if (!officialPending) return;
     var q = state.q;
-    fetch("/api/find?q=" + encodeURIComponent(q))
+    var box = document.getElementById("official-results");
+    if (scroll && box) box.setAttribute("aria-busy", "true");
+    fetch("/api/find?q=" + encodeURIComponent(q) + "&page=" + page)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (q !== state.q) return;
         officialPending = false;
         official = (d && d.schools) || [];
         officialTotal = (d && d.total) || official.length;
+        officialPage = page;
+        if (d && d.perPage) officialPerPage = d.perPage;
         renderOfficial();
+        if (box) box.removeAttribute("aria-busy");
+        if (scroll && box) box.scrollIntoView({ behavior: "smooth", block: "start" });
       })
-      .catch(function () { if (q === state.q) { officialPending = false; renderOfficial(); } });
+      .catch(function () { if (box) box.removeAttribute("aria-busy"); if (q === state.q) { officialPending = false; renderOfficial(); } });
   }
 
   function render(data, append) {

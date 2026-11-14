@@ -328,3 +328,6 @@ textarea.field-input { resize: vertical; }
 .stat-wait { align-self: center; }
 [data-theme="dark"] .stat-box { border-left-color: #7fa3dc; }
 [data-theme="dark"] .stat-box.stat-gold { border-left-color: var(--gold-500); }
+
+.official-pages { margin-top: 12px; align-items: center; }
+#official-results[aria-busy="true"] { opacity: 0.55; transition: opacity .15s; }
