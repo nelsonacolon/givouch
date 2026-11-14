@@ -42,7 +42,7 @@
     });
   }
   var a = { overall: 0, recommend: null, paperwork: 0, paidOnTime: "", credits: "", worth: 0,
-            job: "", startYear: "", reviewer: "", benefit: "", comment: "", displayName: "",
+            job: "", startYear: "", instruction: 0, jobHelp: "", vetSupport: "", yellowRibbon: "", reviewer: "", benefit: "", comment: "", displayName: "",
             email: "", attest: false, website: "" };
 
   // Each step holds one or two questions. "required" lists what must be answered to continue.
@@ -50,6 +50,8 @@
     { qs: ["overall", "recommend"], required: ["overall", "recommend"] },
     { qs: ["paperwork", "paidOnTime"], required: ["paperwork", "paidOnTime"] },
     { qs: ["credits", "worth"], required: ["credits", "worth"] },
+    { qs: ["instruction", "jobHelp"], required: ["instruction", "jobHelp"] },
+    { qs: ["vetSupport", "yellowRibbon"], required: ["vetSupport", "yellowRibbon"] },
     { qs: ["job", "startYear"], required: ["job"] },
     { qs: ["reviewer", "benefit"], required: ["reviewer", "benefit"] },
     { qs: ["comment", "displayName"], required: [] },
@@ -62,6 +64,9 @@
     credits: [["yes", "credits.yes"], ["partly", "credits.partly"], ["no", "credits.no"], ["not_applicable", "credits.not_applicable"]],
     job: [["field", "job.field"], ["other_field", "job.other_field"], ["studying", "job.studying"], ["looking", "job.looking"], ["not_looking", "job.not_looking"]],
     reviewer: [["veteran", "who.veteran"], ["service_member", "who.service_member"], ["spouse", "who.spouse"], ["child", "who.child"]],
+    jobHelp: [["very_helpful", "jobhelp.very_helpful"], ["somewhat_helpful", "jobhelp.somewhat_helpful"], ["not_helpful", "jobhelp.not_helpful"], ["not_used", "jobhelp.not_used"]],
+    vetSupport: [["helped", "vetsupport.helped"], ["not_used", "vetsupport.not_used"], ["none", "vetsupport.none"], ["not_sure", "vetsupport.not_sure"]],
+    yellowRibbon: [["yes", "yellow.yes"], ["no", "yellow.no"], ["not_eligible", "yellow.not_eligible"], ["not_sure", "yellow.not_sure"]],
     benefit: [["post911", "benefit.post911"], ["montgomery", "benefit.montgomery"], ["vre", "benefit.vre"], ["dea", "benefit.dea"], ["other", "benefit.other"]]
   };
 
@@ -123,7 +128,7 @@
     var box = el("div", "question card");
     var label = el("label", "q-label", t("rv.q." + key));
     box.appendChild(label);
-    if (["overall", "paperwork", "worth"].indexOf(key) >= 0) box.appendChild(stars(key));
+    if (["overall", "paperwork", "worth", "instruction"].indexOf(key) >= 0) box.appendChild(stars(key));
     else if (CHOICES[key]) box.appendChild(choices(key));
     else if (key === "startYear") {
       var y = input("startYear", "number");
@@ -273,6 +278,7 @@
     var body = {
       programId: programId, overall: a.overall, recommend: a.recommend, paperwork: a.paperwork,
       paidOnTime: a.paidOnTime, credits: a.credits, worth: a.worth, job: a.job,
+      instruction: a.instruction, jobHelp: a.jobHelp, vetSupport: a.vetSupport, yellowRibbon: a.yellowRibbon,
       startYear: a.startYear === "" ? null : a.startYear, reviewer: a.reviewer, benefit: a.benefit,
       comment: a.comment, displayName: a.displayName, email: a.email.trim(), attest: a.attest, website: a.website,
       turnstileToken: tsToken, code: code

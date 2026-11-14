@@ -107,6 +107,10 @@
       row(dl, "Paid on time", r.paid_on_time);
       row(dl, "Credits transferred", r.credits_transferred);
       row(dl, "Worth the months", r.worth_months ? r.worth_months + " / 5" : null);
+      row(dl, "Quality of instruction", r.instruction_rating ? r.instruction_rating + " / 5" : null);
+      row(dl, "Job assistance", r.job_assistance);
+      row(dl, "Veterans support", r.vet_support);
+      row(dl, "Yellow Ribbon", r.yellow_ribbon);
       row(dl, "After the program", r.job_outcome);
       row(dl, "Comment", r.comment);
       c.appendChild(dl);

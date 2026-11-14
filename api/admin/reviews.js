@@ -4,6 +4,7 @@
 //   POST /api/admin/reviews {id, action}     → action: "publish" or "reject"
 import { getSql } from "../_db.js";
 import { adminReady, authorized } from "./_auth.js";
+import { ensureReviewColumns } from "../_schema.js";
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -16,13 +17,15 @@ export default async function handler(req, res) {
   if (!sql) return res.status(503).json({ error: "Database not configured" });
 
   try {
+    await ensureReviewColumns(sql);
     if (req.method === "GET") {
       const status = ["pending", "published", "rejected"].includes(req.query.status) ? req.query.status : "pending";
       const rows = await sql`
         SELECT r.id, r.program_id, p.program_name, p.school, r.reviewer_email, r.display_name,
                r.start_year, r.reviewer_status, r.benefit, r.overall_rating, r.paperwork_rating,
                r.worth_months, r.paid_on_time, r.credits_transferred, r.would_recommend,
-               r.job_outcome, r.comment, r.status, r.created_at, r.is_sample
+               r.job_outcome, r.instruction_rating, r.job_assistance, r.vet_support, r.yellow_ribbon,
+               r.comment, r.status, r.created_at, r.is_sample
         FROM reviews r JOIN programs p ON p.id = r.program_id
         WHERE r.status = ${status}
         ORDER BY r.created_at ASC

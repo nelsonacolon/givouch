@@ -68,6 +68,10 @@
     if (r.paid_on_time) facts.appendChild(el("li", null, t("prog.paidOnTime") + ": " + t("paid." + r.paid_on_time)));
     if (r.credits_transferred) facts.appendChild(el("li", null, t("prog.credits") + ": " + t("credits." + r.credits_transferred)));
     if (r.worth_months) facts.appendChild(el("li", null, t("prog.worth") + ": " + r.worth_months + " / 5"));
+    if (r.instruction_rating) facts.appendChild(el("li", null, t("prog.instruction") + ": " + r.instruction_rating + " / 5"));
+    if (r.job_assistance) facts.appendChild(el("li", null, t("prog.jobHelp") + ": " + t("jobhelp." + r.job_assistance)));
+    if (r.vet_support) facts.appendChild(el("li", null, t("prog.vetSupport") + ": " + t("vetsupport." + r.vet_support)));
+    if (r.yellow_ribbon) facts.appendChild(el("li", null, t("prog.yellowRibbon") + ": " + t("yellow." + r.yellow_ribbon)));
     if (r.job_outcome) facts.appendChild(el("li", null, t("prog.job") + ": " + label("job." + r.job_outcome, r.job_outcome)));
     if (facts.children.length) c.appendChild(facts);
 
@@ -130,6 +134,8 @@
     grid.appendChild(stat(s.pct_paid_on_time, "prog.statPaid", "%"));
     grid.appendChild(stat(s.avg_paperwork, "prog.statPaperwork"));
     grid.appendChild(stat(s.avg_worth, "prog.statWorth"));
+    grid.appendChild(stat(s.avg_instruction, "prog.statInstruction"));
+    grid.appendChild(stat(s.pct_job_help, "prog.statJobHelp", "%"));
     box.appendChild(grid);
     side.appendChild(box);
 

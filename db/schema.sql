@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS reviews (
   credits_transferred TEXT CHECK (credits_transferred IN ('yes', 'partly', 'no', 'not_applicable')),
   would_recommend    BOOLEAN,
   job_outcome        TEXT,
+  instruction_rating SMALLINT CHECK (instruction_rating BETWEEN 1 AND 5),
+  job_assistance     TEXT CHECK (job_assistance IN ('very_helpful', 'somewhat_helpful', 'not_helpful', 'not_used')),
+  vet_support        TEXT CHECK (vet_support IN ('helped', 'not_used', 'none', 'not_sure')),
+  yellow_ribbon      TEXT CHECK (yellow_ribbon IN ('yes', 'no', 'not_eligible', 'not_sure')),
   comment            TEXT,
   -- New reviews wait in the moderation queue until approved.
   status             TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'published', 'rejected')),

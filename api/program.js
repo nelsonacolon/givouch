@@ -2,6 +2,7 @@
 // One approved program, its review summary and its published reviews.
 // Reviewer emails are never selected, so they can't leak into the response.
 import { getSql } from "./_db.js";
+import { ensureReviewColumns } from "./_schema.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -18,6 +19,7 @@ export default async function handler(req, res) {
   const highest = req.query.sort === "highest";
 
   try {
+    await ensureReviewColumns(sql);
     const programs = await sql`
       SELECT p.id, p.school, p.school_type, p.program_name, p.field_of_study, p.format,
              p.city, to_jsonb(p)->>'state' AS state, p.country, p.gi_bill_approved,
@@ -33,6 +35,9 @@ export default async function handler(req, res) {
         ROUND(AVG(overall_rating)::numeric, 1)::float AS avg_rating,
         ROUND(AVG(paperwork_rating)::numeric, 1)::float AS avg_paperwork,
         ROUND(AVG(worth_months)::numeric, 1)::float AS avg_worth,
+        ROUND(AVG(instruction_rating)::numeric, 1)::float AS avg_instruction,
+        ROUND(100.0 * COUNT(*) FILTER (WHERE job_assistance IN ('very_helpful', 'somewhat_helpful'))
+              / NULLIF(COUNT(*) FILTER (WHERE job_assistance IN ('very_helpful', 'somewhat_helpful', 'not_helpful')), 0))::int AS pct_job_help,
         ROUND(100.0 * COUNT(*) FILTER (WHERE would_recommend)
               / NULLIF(COUNT(would_recommend), 0))::int AS pct_recommend,
         ROUND(100.0 * COUNT(*) FILTER (WHERE paid_on_time IN ('always', 'usually'))
@@ -44,7 +49,8 @@ export default async function handler(req, res) {
     const reviews = await sql`
       SELECT id, display_name, start_year, reviewer_status, benefit, overall_rating,
              paperwork_rating, worth_months, paid_on_time, credits_transferred,
-             would_recommend, job_outcome, comment, created_at, is_sample
+             would_recommend, job_outcome, instruction_rating, job_assistance, vet_support,
+             yellow_ribbon, comment, created_at, is_sample
       FROM reviews
       WHERE program_id = ${id} AND status = 'published'
       ORDER BY

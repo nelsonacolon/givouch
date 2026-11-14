@@ -3,6 +3,7 @@
 import { getSql } from "./_db.js";
 import { turnstileOk } from "./_lists.js";
 import { emailVerificationOn, checkCode } from "./_email.js";
+import { ensureReviewColumns } from "./_schema.js";
 
 const STARS = (v) => Number.isInteger(v) && v >= 1 && v <= 5;
 const ONE_OF = (list) => (v) => list.includes(v);
@@ -11,6 +12,9 @@ const PAID = ONE_OF(["always", "usually", "rarely", "not_applicable"]);
 const CREDITS = ONE_OF(["yes", "partly", "no", "not_applicable"]);
 const JOB = ONE_OF(["field", "other_field", "studying", "looking", "not_looking"]);
 const BENEFIT = ONE_OF(["post911", "montgomery", "vre", "dea", "other"]);
+const JOB_HELP = ONE_OF(["very_helpful", "somewhat_helpful", "not_helpful", "not_used"]);
+const VET_SUPPORT = ONE_OF(["helped", "not_used", "none", "not_sure"]);
+const YELLOW = ONE_OF(["yes", "no", "not_eligible", "not_sure"]);
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 
 function text(v, max) {
@@ -40,6 +44,11 @@ export default async function handler(req, res) {
   if (!STARS(overall)) errors.push("overall");
   if (!STARS(paperwork)) errors.push("paperwork");
   if (!STARS(worth)) errors.push("worth");
+  const instruction = Number(b.instruction);
+  if (!STARS(instruction)) errors.push("instruction");
+  if (!JOB_HELP(b.jobHelp)) errors.push("jobHelp");
+  if (!VET_SUPPORT(b.vetSupport)) errors.push("vetSupport");
+  if (!YELLOW(b.yellowRibbon)) errors.push("yellowRibbon");
   if (typeof b.recommend !== "boolean") errors.push("recommend");
   if (!PAID(b.paidOnTime)) errors.push("paidOnTime");
   if (!CREDITS(b.credits)) errors.push("credits");
@@ -71,6 +80,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    await ensureReviewColumns(sql);
     const program = await sql`SELECT id FROM programs WHERE id = ${programId} AND status = 'approved'`;
     if (!program.length) return res.status(404).json({ error: "Program not found" });
 
@@ -89,10 +99,10 @@ export default async function handler(req, res) {
     const inserted = await sql`
       INSERT INTO reviews (program_id, reviewer_email, display_name, attested_at, start_year, reviewer_status,
         benefit, overall_rating, paperwork_rating, worth_months, paid_on_time, credits_transferred,
-        would_recommend, job_outcome, comment, status)
+        would_recommend, job_outcome, instruction_rating, job_assistance, vet_support, yellow_ribbon, comment, status)
       VALUES (${programId}, ${email}, ${displayName}, now(), ${startYear}, ${b.reviewer},
         ${b.benefit}, ${overall}, ${paperwork}, ${worth}, ${b.paidOnTime}, ${b.credits},
-        ${b.recommend}, ${b.job}, ${comment}, 'pending')
+        ${b.recommend}, ${b.job}, ${instruction}, ${b.jobHelp}, ${b.vetSupport}, ${b.yellowRibbon}, ${comment}, 'pending')
       RETURNING id`;
     return res.status(201).json({ ok: true, id: inserted[0].id });
   } catch (err) {
