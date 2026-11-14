@@ -6,6 +6,8 @@
   var programId = parseInt(params.get("program"), 10);
   // Reviewing a program from official U.S. data that may not be on GIVouch yet.
   var official = !programId && params.get("school") ? { school: params.get("school"), cip: params.get("cip"), level: params.get("level") } : null;
+  // Reviewing a school from the VA's list (not in the Scorecard): the reviewer names the program.
+  var vaCode = !programId && !official && /^[0-9A-Za-z]{8}$/.test(params.get("va") || "") ? params.get("va").toUpperCase() : null;
   var existing = {}; // GIVouch program ids this official program already matches, by format
   var newProgramId = null;
   var program = null;
@@ -46,7 +48,7 @@
       "error-callback": function () { tsToken = ""; updateNext(); }
     });
   }
-  var a = { format: "", overall: 0, recommend: null, paperwork: 0, paidOnTime: "", credits: "", worth: 0,
+  var a = { programName: "", format: "", overall: 0, recommend: null, paperwork: 0, paidOnTime: "", credits: "", worth: 0,
             job: "", startYear: "", instruction: 0, jobHelp: "", vetSupport: "", yellowRibbon: "", reviewer: "", benefit: "", comment: "", displayName: "",
             email: "", attest: false, website: "" };
 
@@ -87,6 +89,7 @@
     var v = a[key];
     if (key === "recommend") return v === true || v === false;
     if (key === "attest") return v === true;
+    if (key === "programName") return String(v || "").trim().length >= 2;
     if (key === "email") return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
     return v !== "" && v !== 0 && v !== null;
   }
@@ -144,6 +147,10 @@
       var c = input("comment", "textarea", 2000);
       c.rows = 5; c.placeholder = t("rv.ph.comment");
       label.htmlFor = c.id; box.appendChild(c);
+    } else if (key === "programName") {
+      var pn = input("programName", "text", 120);
+      pn.placeholder = t("rv.ph.programName");
+      label.htmlFor = pn.id; box.appendChild(pn);
     } else if (key === "displayName") {
       var d = input("displayName", "text", 40);
       d.placeholder = t("rv.ph.displayName");
@@ -185,7 +192,7 @@
     var top = el("div", "rv-top");
     top.appendChild(el("p", "muted rv-count", t("rv.step") + " " + (step + 1) + " " + t("rv.of") + " " + STEPS.length));
     var cancel = el("a", "link-btn", t("rv.cancel"));
-    cancel.href = official ? "/browse?q=" + encodeURIComponent(program.school) : "/program?id=" + programId;
+    cancel.href = official || vaCode ? "/browse?q=" + encodeURIComponent(program.school) : "/program?id=" + programId;
     top.appendChild(cancel);
     root.appendChild(top);
     var bar = el("div", "progress"); var fill = el("div", "progress-fill");
@@ -198,7 +205,7 @@
 
     var isLast = step === STEPS.length - 1;
     if (isLast && codeSent) root.appendChild(codeBox());
-    else STEPS[step].qs.forEach(function (k) { if (k !== "format" || official) root.appendChild(question(k)); });
+    else STEPS[step].qs.forEach(function (k) { if (k !== "format" || official || vaCode) root.appendChild(question(k)); });
 
     // Honeypot field, hidden from people.
     var hp = el("input"); hp.type = "text"; hp.name = "website"; hp.tabIndex = -1; hp.autocomplete = "off";
@@ -257,7 +264,7 @@
     if (sending) return;
     sending = true; render();
     fetch("/api/verify", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: a.email.trim(), programId: official ? existing[a.format] || null : programId, lang: window.GV ? window.GV.lang() : "en", turnstileToken: tsToken }) })
+      body: JSON.stringify({ email: a.email.trim(), programId: official ? existing[a.format] || null : vaCode ? null : programId, lang: window.GV ? window.GV.lang() : "en", turnstileToken: tsToken }) })
       .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
       .then(function (res) {
         sending = false;
@@ -282,7 +289,7 @@
     if (sending) return;
     sending = true; render();
     var body = {
-      programId: official ? null : programId, official: official ? { school: official.school, cip: official.cip, level: official.level, format: a.format } : null, overall: a.overall, recommend: a.recommend, paperwork: a.paperwork,
+      programId: official || vaCode ? null : programId, va: vaCode ? { code: vaCode, program: a.programName.trim(), format: a.format } : null, official: official ? { school: official.school, cip: official.cip, level: official.level, format: a.format } : null, overall: a.overall, recommend: a.recommend, paperwork: a.paperwork,
       paidOnTime: a.paidOnTime, credits: a.credits, worth: a.worth, job: a.job,
       instruction: a.instruction, jobHelp: a.jobHelp, vetSupport: a.vetSupport, yellowRibbon: a.yellowRibbon,
       startYear: a.startYear === "" ? null : a.startYear, reviewer: a.reviewer, benefit: a.benefit,
@@ -314,7 +321,7 @@
     box.appendChild(el("h1", null, t("rv.thanks")));
     box.appendChild(el("p", null, t("rv.thanksBody")));
     var back = el("a", "btn btn-primary", t("rv.backToProgram"));
-    var id = official ? newProgramId : programId;
+    var id = official ? newProgramId : vaCode ? null : programId;
     back.href = id ? "/program?id=" + id : "/browse";
     box.appendChild(back);
     root.appendChild(box);
@@ -331,10 +338,14 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    if (!official && (!programId || programId <= 0)) return fail("prog.notFound");
+    if (!official && !vaCode && (!programId || programId <= 0)) return fail("prog.notFound");
     if (official) STEPS[0].required = ["format", "overall", "recommend"];
     else STEPS[0].required = ["overall", "recommend"];
-    var url = official
+    if (vaCode) {
+      STEPS[0] = { qs: ["overall", "recommend"], required: ["overall", "recommend"] };
+      STEPS.unshift({ qs: ["programName", "format"], required: ["programName", "format"] });
+    }
+    var url = vaCode ? "/api/va-program?code=" + encodeURIComponent(vaCode) : official
       ? "/api/official-program?" + new URLSearchParams({ school: official.school, cip: official.cip || "", level: official.level || "" }).toString()
       : "/api/program?id=" + programId;
     fetch(url)
@@ -342,6 +353,7 @@
       .then(function (d) {
         program = d.program;
         if (official) { program.program_name = d.program.programName; existing = d.existing || {}; }
+        if (vaCode) { program = d.school; program.program_name = d.school.school; }
         return loadTurnstile();
       })
       .then(function () { if (program) render(); })

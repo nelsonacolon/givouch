@@ -36,6 +36,8 @@
     return a;
   }
   var official = null; // official-data matches for the current search
+  var va = null, vaPending = false, vaPage = 0; // schools from the VA's list that the Scorecard doesn't have
+  var VA_PER_PAGE = 10;
   var officialTotal = 0;
   var officialPage = 0, officialPerPage = 10;
   var officialPending = false;
@@ -285,21 +287,23 @@
     if (old) old.remove();
     var gv = last.total;
     var gvBox = function () { return stat(gv, t(gv === 1 ? "browse.program" : "browse.programs")); };
-    if (officialPending) {
+    if (officialPending || vaPending) {
       setStats((gv ? [gvBox()] : []).concat([el("span", "muted stat-wait", t("browse.searching"))]));
       return;
     }
-    if (official && official.length) {
-      // Schools in official data, plus any GIVouch schools shown above that aren't in it (e.g. abroad).
+    var vaCount = vaShown().length;
+    if ((official && official.length) || vaCount) {
+      // Schools in official data and the VA's list, plus any GIVouch schools shown above that
+      // aren't in either (e.g. abroad).
       var names = {};
-      official.forEach(function (s) { names[String(s.name).toLowerCase()] = true; });
+      (official || []).concat(vaShown()).forEach(function (s) { names[normName(s.name)] = true; });
       var extra = {};
       (last.programs || []).forEach(function (p) {
-        var k = String(p.school || "").toLowerCase();
+        var k = normName(p.school);
         if (k && !names[k]) extra[k] = true;
       });
       var more = Object.keys(extra).length;
-      var total = officialTotal + more, shown = official.length + more;
+      var total = officialTotal + more + vaCount;
       var rv = last.reviewed || 0;
       var label = t(total === 1 ? "browse.schoolFound" : "browse.schoolsFound");
       setStats([
@@ -332,6 +336,84 @@
     return p.toString();
   }
 
+  // VA-listed schools apply to a school-name search in the U.S. (state filter included);
+  // field, level, format and type come from Department of Education data, which these lack.
+  function wantsVA() {
+    return state.where === "us" && state.q.length >= 2 && !state.field && !state.level && !state.format && !state.ownership;
+  }
+  function vaShown() {
+    if (!va) return [];
+    var seen = {};
+    (official || []).forEach(function (s) { seen[normName(s.name)] = true; });
+    return va.filter(function (s) { return (!state.usState || s.state === state.usState) && !seen[normName(s.name)]; });
+  }
+  function normName(n) { return String(n || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+  function vaType(s) {
+    if (/FLIGHT/.test(s.type || "")) return t("vatype.flight");
+    if (/OJT|APPRENTICE/.test(s.type || "")) return t("vatype.ojt");
+    return t("vatype.other");
+  }
+  function vaCard(s) {
+    var c = el("article", "program-card find-card");
+    var main = el("div", "program-main");
+    main.appendChild(el("h3", null, s.name));
+    main.appendChild(el("p", "program-where", [s.city, s.state].filter(Boolean).join(", ")));
+    var tags = el("div", "tags");
+    tags.appendChild(el("span", "tag tag-gold", vaType(s)));
+    var onSite = (last && last.programs || []).some(function (p) { return normName(p.school) === normName(s.name); });
+    tags.appendChild(el("span", "tag", t(onSite ? "browse.onGivouch" : "browse.noReviewsYet")));
+    main.appendChild(tags);
+    var actions = el("div", "find-actions");
+    actions.appendChild(link(t("browse.writeReview"), "/review?va=" + encodeURIComponent(s.code), "btn btn-primary btn-sm"));
+    var page = safeUrl(s.vaUrl);
+    if (page) actions.appendChild(link(t("browse.vaPage") + " ↗", page, "btn btn-outline btn-sm", true));
+    main.appendChild(actions);
+    c.appendChild(main);
+    return c;
+  }
+  function renderVA() {
+    var box = document.getElementById("va-results");
+    if (!box) return;
+    box.innerHTML = "";
+    var list = vaShown();
+    updateHeader();
+    if (!list.length) return;
+    box.appendChild(el("h2", "section-label official-head", t("browse.vaTitle")));
+    box.appendChild(el("p", "muted small", t("browse.vaNote")));
+    var pages = Math.ceil(list.length / VA_PER_PAGE);
+    if (vaPage >= pages) vaPage = pages - 1;
+    list.slice(vaPage * VA_PER_PAGE, (vaPage + 1) * VA_PER_PAGE).forEach(function (s) { box.appendChild(vaCard(s)); });
+    if (pages > 1) {
+      var nav = el("div", "rv-nav official-pages");
+      var prev = el("button", "btn btn-outline btn-sm", "‹ " + t("browse.prevPage")); prev.type = "button";
+      prev.style.visibility = vaPage > 0 ? "visible" : "hidden";
+      prev.addEventListener("click", function () { vaPage--; renderVA(); box.scrollIntoView({ behavior: "smooth", block: "start" }); });
+      var next = el("button", "btn btn-outline btn-sm", t("browse.nextPage") + " ›"); next.type = "button";
+      next.style.visibility = vaPage < pages - 1 ? "visible" : "hidden";
+      next.addEventListener("click", function () { vaPage++; renderVA(); box.scrollIntoView({ behavior: "smooth", block: "start" }); });
+      nav.appendChild(prev);
+      nav.appendChild(el("span", "muted small", t("browse.page") + " " + (vaPage + 1) + " " + t("browse.of") + " " + pages));
+      nav.appendChild(next);
+      box.appendChild(nav);
+    }
+  }
+  function loadVA() {
+    va = null; vaPage = 0;
+    vaPending = wantsVA();
+    renderVA();
+    if (!vaPending) return;
+    var q = state.q;
+    fetch("/api/va-search?q=" + encodeURIComponent(q))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (q !== state.q) return;
+        vaPending = false;
+        va = (d && d.available && d.schools) || [];
+        renderVA();
+      })
+      .catch(function () { if (q === state.q) { vaPending = false; renderVA(); } });
+  }
+
   function loadOfficial(page, scroll) {
     page = page || 0;
     if (!scroll) { official = null; officialTotal = 0; }
@@ -351,6 +433,7 @@
         officialPage = page;
         if (d && d.perPage) officialPerPage = d.perPage;
         renderOfficial();
+        renderVA();
         if (box) box.removeAttribute("aria-busy");
         if (scroll && box) box.scrollIntoView({ behavior: "smooth", block: "start" });
       })
@@ -376,7 +459,7 @@
     }
     fetch(query(offset))
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(function (data) { last = data; render(data, append); if (!append) loadOfficial(); else updateHeader(); })
+      .then(function (data) { last = data; render(data, append); if (!append) { loadOfficial(); loadVA(); } else updateHeader(); })
       .catch(function () {
         list.innerHTML = "";
         list.appendChild(el("p", "notice", t("browse.error")));
@@ -409,7 +492,7 @@
       refresh();
     });
     document.getElementById("show-more").addEventListener("click", function () { load(true); });
-    document.addEventListener("gv:lang", function () { renderFilters(); if (last) render(last, false); renderOfficial(); });
+    document.addEventListener("gv:lang", function () { renderFilters(); if (last) render(last, false); renderOfficial(); renderVA(); });
 
     load(false);
   });

@@ -40,6 +40,11 @@ export default async function handler(req, res) {
       if (!Number.isInteger(id) || id <= 0 || !next) return res.status(400).json({ error: "Invalid request" });
       const updated = await sql`UPDATE reviews SET status = ${next} WHERE id = ${id} RETURNING id, status`;
       if (!updated.length) return res.status(404).json({ error: "Review not found" });
+      // A program a reviewer named (school from the VA's list) goes live with its first published review.
+      if (next === "published") {
+        await sql`UPDATE programs SET status = 'approved'
+                  WHERE status = 'pending' AND id = (SELECT program_id FROM reviews WHERE id = ${id})`;
+      }
       return res.status(200).json({ ok: true, review: updated[0] });
     }
 

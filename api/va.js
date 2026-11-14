@@ -5,35 +5,13 @@
 // If nothing matches, or the VA's service is down or changes, it falls back to the tool's
 // name search, so the button always works. debug=1 returns JSON instead of redirecting.
 
-const TOOL = "https://www.va.gov/education/gi-bill-comparison-tool/";
+import { TOOL, searchUrl, toRows, cleanName as clean, norm, digits } from "./_va.js";
+
 const SEARCH_URLS = [
   (n) => `https://api.va.gov/v1/gi/institutions/search?name=${encodeURIComponent(n)}`,
   (n) => `https://api.va.gov/v0/gi/institutions/search?name=${encodeURIComponent(n)}`,
 ];
-
-const clean = (v, max) => (typeof v === "string" ? v.replace(/[^\p{L}\p{N}\s'&.,()-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, max) : "");
-const norm = (s) => String(s || "").toLowerCase().replace(/\s*-\s*main campus$/i, "").replace(/[^a-z0-9]+/g, " ").trim();
-const digits = (s) => String(s || "").replace(/\D/g, "");
-
-export function searchUrl(name) {
-  const n = String(name || "").replace(/\s*-\s*Main Campus$/i, "").trim();
-  return n ? `${TOOL}schools-and-employers?search=name&name=${encodeURIComponent(n)}` : TOOL;
-}
-
-// Results come back as JSON:API ({data:[{id, attributes:{...}}]}); accept a plain list too.
-function rows(json) {
-  const list = Array.isArray(json) ? json : Array.isArray(json && json.data) ? json.data : [];
-  return list.map((r) => {
-    const a = (r && r.attributes) || r || {};
-    return {
-      code: String(a.facility_code || a.facilityCode || r.id || "").toUpperCase(),
-      name: a.name || "",
-      state: a.state || "",
-      ipeds: digits(a.cross || a.ipeds || a.iped),
-      campus: String(a.campus_type || a.campusType || ""),
-    };
-  }).filter((r) => /^[0-9A-Z]{8}$/.test(r.code));
-}
+const rows = toRows;
 
 // Main campus first: VA marks branches as extensions.
 const mainFirst = (a, b) => (/^e/i.test(a.campus) ? 1 : 0) - (/^e/i.test(b.campus) ? 1 : 0);

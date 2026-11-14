@@ -5,6 +5,7 @@ import { turnstileOk } from "./_lists.js";
 import { emailVerificationOn, checkCode } from "./_email.js";
 import { ensureReviewColumns } from "./_schema.js";
 import { fetchOfficialProgram, findProgram, createProgram } from "./_official.js";
+import { vaProfile, isCode, pageUrl, schoolType } from "./_va.js";
 
 const STARS = (v) => Number.isInteger(v) && v >= 1 && v <= 5;
 const ONE_OF = (list) => (v) => list.includes(v);
@@ -41,8 +42,15 @@ export default async function handler(req, res) {
   let programId = parseInt(b.programId, 10);
   // A program from official U.S. data that may not be on GIVouch yet: {school, cip, level, format}.
   const off = !programId && b.official && typeof b.official === "object" ? b.official : null;
+  // A school from the VA's list that isn't in the Scorecard: {code, program, format}.
+  const vaReq = !programId && !off && b.va && typeof b.va === "object" ? b.va : null;
+  const vaProgram = vaReq ? text(vaReq.program, 120) : null;
   if (off) {
     if (!["online", "in_person"].includes(off.format)) errors.push("format");
+  } else if (vaReq) {
+    if (!isCode(String(vaReq.code || "").toUpperCase())) errors.push("programId");
+    if (!vaProgram || vaProgram.length < 2) errors.push("programName");
+    if (!["online", "in_person"].includes(vaReq.format)) errors.push("format");
   } else if (!Number.isInteger(programId) || programId <= 0) errors.push("programId");
 
   const overall = Number(b.overall), paperwork = Number(b.paperwork), worth = Number(b.worth);
@@ -86,8 +94,19 @@ export default async function handler(req, res) {
 
   try {
     await ensureReviewColumns(sql);
-    let info = null;
-    if (off) {
+    let info = null, vaSchool = null;
+    if (vaReq) {
+      const code = String(vaReq.code).toUpperCase();
+      try { vaSchool = await vaProfile(code); } catch { vaSchool = null; }
+      if (!vaSchool) return res.status(404).json({ error: "Program not found" });
+      // Same school + program + format already on GIVouch (approved or waiting)?
+      const found = await sql`
+        SELECT id FROM programs
+        WHERE status <> 'rejected' AND lower(school) = lower(${vaSchool.displayName})
+          AND lower(program_name) = lower(${vaProgram}) AND format = ${vaReq.format}
+        ORDER BY (status = 'approved') DESC, id LIMIT 1`;
+      programId = found.length ? found[0].id : null;
+    } else if (off) {
       // Re-check the school and program against the official data; never trust the browser.
       try {
         info = await fetchOfficialProgram(off.school, off.cip, off.level);
@@ -116,7 +135,17 @@ export default async function handler(req, res) {
       if (check !== "ok") return res.status(400).json({ error: "code_" + check, fields: ["code"] });
     }
 
-    // First review of this program: add it to GIVouch now.
+    // First review of this program: add it to GIVouch now. Programs named by a reviewer
+    // wait for approval on the moderation page, like the review itself.
+    if (!programId && vaSchool) {
+      const created = await sql`
+        INSERT INTO programs (school, school_type, program_name, field_of_study, format, city, state, country,
+                              gi_bill_approved, va_listing_url, status)
+        VALUES (${vaSchool.displayName}, ${schoolType(vaSchool.type)}, ${vaProgram}, 'Other', ${vaReq.format},
+                ${vaSchool.city}, ${vaSchool.state}, 'United States', TRUE, ${pageUrl(vaSchool.code)}, 'pending')
+        RETURNING id`;
+      programId = created[0].id;
+    }
     if (!programId) programId = await createProgram(sql, info, off.format);
 
     const inserted = await sql`
