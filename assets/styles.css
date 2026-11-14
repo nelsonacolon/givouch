@@ -337,3 +337,8 @@ textarea.field-input { resize: vertical; }
 .filter-label { display: block; font-weight: 700; margin-bottom: 6px; }
 .filter-where .choices { gap: 8px; }
 .filter-where .choice { padding: 8px 12px; font-size: 0.9rem; }
+
+/* Flag and "For veterans, by a veteran" at the top of the footer. */
+.footer-flag { text-align: center; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+.footer-flag img { display: block; margin: 0 auto 10px; width: 72px; height: auto; border-radius: 2px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.footer-flag p { margin: 0; font-size: 1.05rem; font-weight: 600; color: #e8edf4; }
