@@ -191,8 +191,10 @@
       });
       var more = Object.keys(extra).length;
       var total = officialTotal + more, shown = official.length + more;
+      var rv = last.reviewed || 0;
       count.textContent = (total > shown ? shown + " " + t("browse.of") + " " + total : total) + " " +
-        t(total === 1 ? "browse.school" : "browse.schools") + (gv ? " · " + gvText + " " + t("browse.onGivouchCount") : "");
+        t(total === 1 ? "browse.schoolFound" : "browse.schoolsFound") + " | " +
+        rv + " " + t(rv === 1 ? "browse.programReviewed" : "browse.programsReviewed");
       return;
     }
     count.textContent = gvText;

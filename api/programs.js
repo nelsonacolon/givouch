@@ -112,7 +112,8 @@ export default async function handler(req, res) {
              p.city, to_jsonb(p)->>'state' AS state, p.country, p.gi_bill_approved, p.is_sample,
              COUNT(r.id)::int AS review_count,
              ROUND(AVG(r.overall_rating)::numeric, 1)::float AS avg_rating,
-             COUNT(*) OVER()::int AS total
+             COUNT(*) OVER()::int AS total,
+             SUM((COUNT(r.id) > 0)::int) OVER()::int AS reviewed
       FROM programs p
       LEFT JOIN reviews r ON r.program_id = p.id AND r.status = 'published'
       WHERE p.status = 'approved'
@@ -137,12 +138,14 @@ export default async function handler(req, res) {
     `;
 
     const total = rows.length ? rows[0].total : 0;
+    const reviewed = rows.length ? rows[0].reviewed : 0; // programs with at least one published review
     res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=120");
     return res.status(200).json({
       total,
+      reviewed,
       pageSize: PAGE_SIZE,
       offset,
-      programs: rows.map(({ total: _t, ...p }) => p),
+      programs: rows.map(({ total: _t, reviewed: _r, ...p }) => p),
       countries: (filters[0]?.countries || []).sort(),
       fields: (filters[0]?.fields || []).sort(),
     });
