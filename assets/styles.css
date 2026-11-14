@@ -287,3 +287,5 @@ textarea.field-input { resize: vertical; }
 .ap-field:last-child { margin-bottom: 0; }
 .ap-field select.field-input { appearance: auto; }
 .ap-field p.q-label { margin: 0 0 12px; }
+
+.code-input { max-width: 200px; font-size: 1.4rem; letter-spacing: 6px; text-align: center; }

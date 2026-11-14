@@ -44,3 +44,9 @@ Open `/api/health` on the deployed site. It should show `"ok": true` and `"anthr
 - Visitors suggest missing programs at `/add-program` (linked from Browse: "Can't find it? Add a program").
 - Suggestions are saved as **pending**. Approve or reject them on `/admin` → **Programs**. Check the school against the VA's GI Bill Comparison Tool before approving.
 - Fields of study come from a fixed list (`api/_lists.js`) so they can be translated.
+
+## Email verification
+- Turned on by setting `RESEND_API_KEY` in Vercel (Production and Preview), then redeploying.
+- On the last step of the review form, the reviewer gets a 6-digit code by email (15 minutes, 5 tries, 3 codes per hour per email).
+- Sender is `EMAIL_FROM` if set, otherwise `GIVouch <onboarding@resend.dev>`. Resend's test sender can only email the Resend account owner, so real visitors need a verified domain first.
+- Codes are stored hashed in the `email_codes` table, which is created automatically.

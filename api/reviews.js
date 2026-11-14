@@ -2,6 +2,7 @@
 // appears on the site after it is approved on the moderation page.
 import { getSql } from "./_db.js";
 import { turnstileOk } from "./_lists.js";
+import { emailVerificationOn, checkCode } from "./_email.js";
 
 const STARS = (v) => Number.isInteger(v) && v >= 1 && v <= 5;
 const ONE_OF = (list) => (v) => list.includes(v);
@@ -59,9 +60,14 @@ export default async function handler(req, res) {
 
   if (errors.length) return res.status(400).json({ error: "Please check your answers", fields: errors });
 
-  const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim();
-  if (!(await turnstileOk(b.turnstileToken, ip))) {
-    return res.status(400).json({ error: "Security check failed", fields: ["turnstile"] });
+  // With email verification on, the code proves the email is real (and the bot check
+  // already ran when the code was sent). Otherwise, check the bot check here.
+  const verifying = emailVerificationOn();
+  if (!verifying) {
+    const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+    if (!(await turnstileOk(b.turnstileToken, ip))) {
+      return res.status(400).json({ error: "Security check failed", fields: ["turnstile"] });
+    }
   }
 
   try {
@@ -74,6 +80,11 @@ export default async function handler(req, res) {
       WHERE program_id = ${programId} AND lower(reviewer_email) = lower(${email}) AND status <> 'rejected'
       LIMIT 1`;
     if (dupe.length) return res.status(409).json({ error: "duplicate", fields: ["email"] });
+
+    if (verifying) {
+      const check = await checkCode(sql, email, typeof b.code === "string" ? b.code.trim() : "");
+      if (check !== "ok") return res.status(400).json({ error: "code_" + check, fields: ["code"] });
+    }
 
     const inserted = await sql`
       INSERT INTO reviews (program_id, reviewer_email, display_name, attested_at, start_year, reviewer_status,

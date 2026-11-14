@@ -8,9 +8,12 @@
   var sending = false;
   // Cloudflare Turnstile (bot check). Only used when a site key is configured in Vercel.
   var tsKey = null, tsReady = false, tsToken = "";
+  // Email verification: on when the server has an email service configured.
+  var verifyOn = false, codeSent = false, code = "";
   function loadTurnstile() {
     return fetch("/api/config").then(function (r) { return r.ok ? r.json() : {}; }).then(function (c) {
       tsKey = c.turnstileSiteKey || null;
+      verifyOn = Boolean(c.emailVerification);
       if (!tsKey) return;
       return new Promise(function (resolve) {
         window.gvTurnstileLoaded = function () { tsReady = true; resolve(); };
@@ -157,7 +160,9 @@
     var next = document.getElementById("rv-next");
     if (!next) return;
     var ok = STEPS[step].required.every(answered);
-    if (step === STEPS.length - 1 && tsKey && !tsToken) ok = false;
+    var lastStep = step === STEPS.length - 1;
+    if (lastStep && codeSent) ok = ok && /^\d{6}$/.test(code);
+    else if (lastStep && tsKey && !tsToken) ok = false;
     next.disabled = !ok || sending;
   }
 
@@ -180,7 +185,9 @@
     root.appendChild(el("p", "program-where", [program.school, [program.city, program.state,
       window.GVLabels ? window.GVLabels.country(program.country) : program.country].filter(Boolean).join(", ")].filter(Boolean).join(" · ")));
 
-    STEPS[step].qs.forEach(function (k) { root.appendChild(question(k)); });
+    var isLast = step === STEPS.length - 1;
+    if (isLast && codeSent) root.appendChild(codeBox());
+    else STEPS[step].qs.forEach(function (k) { root.appendChild(question(k)); });
 
     // Honeypot field, hidden from people.
     var hp = el("input"); hp.type = "text"; hp.name = "website"; hp.tabIndex = -1; hp.autocomplete = "off";
@@ -188,7 +195,7 @@
     hp.addEventListener("input", function () { a.website = hp.value; });
     root.appendChild(hp);
 
-    if (step === STEPS.length - 1 && !sending) mountTurnstile(root);
+    if (isLast && !sending && !codeSent) mountTurnstile(root);
 
     var err = el("p", "form-error"); err.id = "rv-error"; err.hidden = true; root.appendChild(err);
 
@@ -196,13 +203,17 @@
     var back = el("button", "btn btn-outline", t("rv.back"));
     back.type = "button";
     back.style.visibility = step === 0 ? "hidden" : "visible";
-    back.addEventListener("click", function () { step--; render(); window.scrollTo(0, 0); });
+    back.addEventListener("click", function () {
+      if (isLast && codeSent) { codeSent = false; code = ""; render(); return; }
+      step--; render(); window.scrollTo(0, 0);
+    });
     nav.appendChild(back);
     var last = step === STEPS.length - 1;
-    var next = el("button", "btn btn-primary", last ? (sending ? t("rv.sending") : t("rv.submit")) : t("rv.next"));
+    var lastLabel = verifyOn && !codeSent ? t("rv.sendCode") : t("rv.submit");
+    var next = el("button", "btn btn-primary", last ? (sending ? t("rv.sending") : lastLabel) : t("rv.next"));
     next.type = "button"; next.id = "rv-next";
     next.addEventListener("click", function () {
-      if (last) return submit();
+      if (last) return verifyOn && !codeSent ? requestCode() : submit();
       step++; render(); window.scrollTo(0, 0);
     });
     nav.appendChild(next);
@@ -210,6 +221,43 @@
     if (last) root.appendChild(el("p", "muted small", t("rv.privacyNote")));
     updateNext();
     if (focused) { var f = document.getElementById(focused); if (f) f.focus(); }
+  }
+
+  function codeBox() {
+    var box = el("div", "question card");
+    var label = el("label", "q-label", t("rv.q.code"));
+    var i = el("input", "field-input code-input");
+    i.id = "f-code"; i.inputMode = "numeric"; i.autocomplete = "one-time-code";
+    i.placeholder = "123456"; i.value = code;
+    i.addEventListener("input", function () { i.value = i.value.replace(/\D/g, "").slice(0, 6); code = i.value; updateNext(); });
+    label.htmlFor = i.id;
+    box.appendChild(label);
+    box.appendChild(el("p", "q-hint", t("rv.codeSentTo") + " " + a.email.trim() + ". " + t("rv.codeHint")));
+    box.appendChild(i);
+    var again = el("button", "link-btn small", t("rv.resend"));
+    again.type = "button";
+    again.addEventListener("click", function () { codeSent = false; code = ""; render(); });
+    var p = el("p", "q-hint"); p.appendChild(again); box.appendChild(p);
+    setTimeout(function () { var x = document.getElementById("f-code"); if (x && !code) x.focus(); }, 0);
+    return box;
+  }
+
+  function requestCode() {
+    if (sending) return;
+    sending = true; render();
+    fetch("/api/verify", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: a.email.trim(), programId: programId, lang: window.GV ? window.GV.lang() : "en", turnstileToken: tsToken }) })
+      .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
+      .then(function (res) {
+        sending = false;
+        if (res.status === 200) { codeSent = true; code = ""; return render(); }
+        render();
+        var map = { 409: "rv.err.duplicate", 429: "rv.err.rateLimited", 502: "rv.err.sendFailed" };
+        if (res.d && res.d.error === "turnstile") return showError("rv.err.turnstile");
+        if (res.d && res.d.error === "invalid_email") return showError("rv.err.email");
+        showError(map[res.status] || "rv.err.generic");
+      })
+      .catch(function () { sending = false; render(); showError("rv.err.generic"); });
   }
 
   function showError(key) {
@@ -227,7 +275,7 @@
       paidOnTime: a.paidOnTime, credits: a.credits, worth: a.worth, job: a.job,
       startYear: a.startYear === "" ? null : a.startYear, reviewer: a.reviewer, benefit: a.benefit,
       comment: a.comment, displayName: a.displayName, email: a.email.trim(), attest: a.attest, website: a.website,
-      turnstileToken: tsToken
+      turnstileToken: tsToken, code: code
     };
     fetch("/api/reviews", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
@@ -236,6 +284,10 @@
         if (res.status === 201) return done();
         render();
         if (res.status === 409) return showError("rv.err.duplicate");
+        if (res.d && /^code_/.test(res.d.error || "")) {
+          if (res.d.error !== "code_wrong") { codeSent = false; code = ""; render(); }
+          return showError("rv.err." + res.d.error);
+        }
         if (res.d && res.d.fields && res.d.fields.indexOf("turnstile") >= 0) return showError("rv.err.turnstile");
         if (res.status === 400) return showError("rv.err.invalid");
         showError("rv.err.generic");
