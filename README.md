@@ -55,3 +55,6 @@ Open `/api/health` on the deployed site. It should show `"ok": true` and `"anthr
 - **United States:** official U.S. Department of Education College Scorecard data (`api/find.js`). Set `SCORECARD_API_KEY` (free from api.data.gov) in Vercel; without it the shared `DEMO_KEY` is used, which has very low limits.
 - **Abroad:** Claude web search (`api/find-abroad.js`), shown as *unverified*. Only results with a link that came from the actual search are kept; no contact details or dollar amounts. Uses `ANTHROPIC_API_KEY` (model can be changed with `ANTHROPIC_MODEL`), protected by Turnstile, up to 3 web searches per request.
 - Each result links to the VA's GI Bill Comparison Tool, shows GIVouch reviews when the school is listed, and offers "Add to GIVouch" (prefills `/add-program`).
+
+## Cache busting
+Pages load `/assets/*.css` and `*.js` with `?v=<date+letter>`. After changing a file in `assets/`, bump that value in every page so browsers fetch the new copy (one replace across `*.html`).
