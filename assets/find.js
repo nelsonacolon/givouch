@@ -6,6 +6,13 @@
   var t = function (k) { return window.GV ? window.GV.t(k) : k; };
   var lang = function () { return window.GV ? window.GV.lang() : "en"; };
   var VA_TOOL = "https://www.va.gov/education/gi-bill-comparison-tool/";
+  // Opens the VA's GI Bill Comparison Tool already searching for this school.
+  // Campus suffixes like "-Main Campus" are dropped so the VA's name search matches.
+  function vaSearch(name) {
+    var n = String(name || "").replace(/\s*-\s*Main Campus$/i, "").trim();
+    if (!n) return VA_TOOL;
+    return VA_TOOL + "schools-and-employers?search=name&name=" + encodeURIComponent(n);
+  }
 
   var FIELDS = ["Accounting", "Agriculture", "Architecture", "Arts", "Automotive", "Aviation", "Biology",
     "Business", "Communications", "Computer science", "Construction", "Criminal justice", "Culinary arts",
@@ -202,7 +209,7 @@
       });
     }
     actions.appendChild(link("+ " + t("find.addToGivouch"), addLink(s, s.programs && s.programs[0] ? s.programs[0].title : ""), "btn btn-outline btn-sm"));
-    actions.appendChild(link(t("find.checkVA") + " ↗", VA_TOOL, "btn btn-outline btn-sm", true));
+    actions.appendChild(link(t("find.checkVA") + " ↗", vaSearch(s.name), "btn btn-outline btn-sm", true));
     var site = safeUrl(s.url);
     if (site) actions.appendChild(link(t("find.website") + " ↗", site, "btn btn-outline btn-sm", true));
     main.appendChild(actions);
@@ -221,7 +228,7 @@
     if (s.note) main.appendChild(el("p", "muted small", s.note));
     var actions = el("div", "find-actions");
     actions.appendChild(link("+ " + t("find.addToGivouch"), addLink(s, s.program), "btn btn-outline btn-sm"));
-    actions.appendChild(link(t("find.checkVA") + " ↗", VA_TOOL, "btn btn-outline btn-sm", true));
+    actions.appendChild(link(t("find.checkVA") + " ↗", vaSearch(s.name), "btn btn-outline btn-sm", true));
     var site = s.url && safeUrl(s.url);
     if (site) actions.appendChild(link(t("find.website") + " ↗", site, "btn btn-outline btn-sm", true));
     main.appendChild(actions);

@@ -4,6 +4,13 @@
   var t = function (k) { return window.GV ? window.GV.t(k) : k; };
   var lang = function () { return window.GV ? window.GV.lang() : "en"; };
   var VA_TOOL = "https://www.va.gov/education/gi-bill-comparison-tool/";
+  // Opens the VA's GI Bill Comparison Tool already searching for this school.
+  // Campus suffixes like "-Main Campus" are dropped so the VA's name search matches.
+  function vaSearch(name) {
+    var n = String(name || "").replace(/\s*-\s*Main Campus$/i, "").trim();
+    if (!n) return VA_TOOL;
+    return VA_TOOL + "schools-and-employers?search=name&name=" + encodeURIComponent(n);
+  }
   var data = null;
   var sort = "newest";
 
@@ -144,7 +151,7 @@
     side.appendChild(write);
 
     var va = el("a", "btn btn-outline btn-block", t("prog.verifyVA") + " ↗");
-    va.href = safeUrl(p.va_listing_url || VA_TOOL);
+    va.href = p.va_listing_url ? safeUrl(p.va_listing_url) : vaSearch(p.school);
     va.target = "_blank";
     va.rel = "noopener noreferrer";
     side.appendChild(va);
