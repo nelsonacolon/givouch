@@ -303,3 +303,11 @@ textarea.field-input { resize: vertical; }
 #official-results { margin-top: 28px; }
 .official-head { margin: 0 0 4px; }
 #official-results .find-card .tag { display: inline-block; margin-top: 4px; }
+
+/* Program list under each school from official data (browse search). */
+.official-programs { margin: 10px 0 4px; }
+.official-programs summary { cursor: pointer; font-weight: 700; color: var(--link); }
+.official-programs .level-head { margin: 12px 0 4px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.program-links { margin: 0; padding-left: 18px; columns: 2 260px; column-gap: 24px; }
+.program-links li { margin: 2px 0; break-inside: avoid; }
+.program-links .program-link, .review-facts .program-link { color: var(--link); text-decoration: underline; }

@@ -4,6 +4,7 @@ import { getSql } from "./_db.js";
 import { turnstileOk } from "./_lists.js";
 import { emailVerificationOn, checkCode } from "./_email.js";
 import { ensureReviewColumns } from "./_schema.js";
+import { fetchOfficialProgram, findProgram, createProgram } from "./_official.js";
 
 const STARS = (v) => Number.isInteger(v) && v >= 1 && v <= 5;
 const ONE_OF = (list) => (v) => list.includes(v);
@@ -37,8 +38,12 @@ export default async function handler(req, res) {
   if (b.website) return res.status(201).json({ ok: true });
 
   const errors = [];
-  const programId = parseInt(b.programId, 10);
-  if (!Number.isInteger(programId) || programId <= 0) errors.push("programId");
+  let programId = parseInt(b.programId, 10);
+  // A program from official U.S. data that may not be on GIVouch yet: {school, cip, level, format}.
+  const off = !programId && b.official && typeof b.official === "object" ? b.official : null;
+  if (off) {
+    if (!["online", "in_person"].includes(off.format)) errors.push("format");
+  } else if (!Number.isInteger(programId) || programId <= 0) errors.push("programId");
 
   const overall = Number(b.overall), paperwork = Number(b.paperwork), worth = Number(b.worth);
   if (!STARS(overall)) errors.push("overall");
@@ -81,20 +86,38 @@ export default async function handler(req, res) {
 
   try {
     await ensureReviewColumns(sql);
-    const program = await sql`SELECT id FROM programs WHERE id = ${programId} AND status = 'approved'`;
-    if (!program.length) return res.status(404).json({ error: "Program not found" });
+    let info = null;
+    if (off) {
+      // Re-check the school and program against the official data; never trust the browser.
+      try {
+        info = await fetchOfficialProgram(off.school, off.cip, off.level);
+      } catch (err) {
+        console.error("official program lookup failed", err);
+        return res.status(502).json({ error: "source_unavailable" });
+      }
+      if (!info) return res.status(404).json({ error: "Program not found" });
+      programId = await findProgram(sql, info, off.format);
+    } else {
+      const program = await sql`SELECT id FROM programs WHERE id = ${programId} AND status = 'approved'`;
+      if (!program.length) return res.status(404).json({ error: "Program not found" });
+    }
 
     // One review per email per program (published or waiting).
-    const dupe = await sql`
-      SELECT 1 FROM reviews
-      WHERE program_id = ${programId} AND lower(reviewer_email) = lower(${email}) AND status <> 'rejected'
-      LIMIT 1`;
-    if (dupe.length) return res.status(409).json({ error: "duplicate", fields: ["email"] });
+    if (programId) {
+      const dupe = await sql`
+        SELECT 1 FROM reviews
+        WHERE program_id = ${programId} AND lower(reviewer_email) = lower(${email}) AND status <> 'rejected'
+        LIMIT 1`;
+      if (dupe.length) return res.status(409).json({ error: "duplicate", fields: ["email"] });
+    }
 
     if (verifying) {
       const check = await checkCode(sql, email, typeof b.code === "string" ? b.code.trim() : "");
       if (check !== "ok") return res.status(400).json({ error: "code_" + check, fields: ["code"] });
     }
+
+    // First review of this program: add it to GIVouch now.
+    if (!programId) programId = await createProgram(sql, info, off.format);
 
     const inserted = await sql`
       INSERT INTO reviews (program_id, reviewer_email, display_name, attested_at, start_year, reviewer_status,
@@ -104,7 +127,7 @@ export default async function handler(req, res) {
         ${b.benefit}, ${overall}, ${paperwork}, ${worth}, ${b.paidOnTime}, ${b.credits},
         ${b.recommend}, ${b.job}, ${instruction}, ${b.jobHelp}, ${b.vetSupport}, ${b.yellowRibbon}, ${comment}, 'pending')
       RETURNING id`;
-    return res.status(201).json({ ok: true, id: inserted[0].id });
+    return res.status(201).json({ ok: true, id: inserted[0].id, programId });
   } catch (err) {
     console.error("review insert failed", err);
     return res.status(500).json({ error: "Could not save your review" });

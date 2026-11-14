@@ -193,7 +193,11 @@
       var ul = el("ul", "review-facts");
       s.programs.forEach(function (p) {
         var lvl = p.level && LEVEL_NUM[p.level] ? t("level." + LEVEL_NUM[p.level]) : (p.credential || "");
-        ul.appendChild(el("li", null, p.title + (lvl ? " — " + lvl : "")));
+        var li = el("li");
+        if (p.code && p.level && s.id) {
+          li.appendChild(link(p.title + (lvl ? " — " + lvl : ""), "/review?" + new URLSearchParams({ school: String(s.id), cip: p.code, level: String(p.level) }).toString(), "program-link"));
+        } else li.textContent = p.title + (lvl ? " — " + lvl : "");
+        ul.appendChild(li);
       });
       main.appendChild(ul);
     }
@@ -208,7 +212,6 @@
         actions.appendChild(link(g.program + " — " + g.reviews + " " + t(g.reviews === 1 ? "browse.review" : "browse.reviews"), "/program?id=" + g.id, "btn btn-primary btn-sm"));
       });
     }
-    actions.appendChild(link("+ " + t("find.addToGivouch"), addLink(s, s.programs && s.programs[0] ? s.programs[0].title : ""), "btn btn-outline btn-sm"));
     actions.appendChild(link(t("find.checkVA") + " ↗", vaSearch(s.name), "btn btn-outline btn-sm", true));
     var site = safeUrl(s.url);
     if (site) actions.appendChild(link(t("find.website") + " ↗", site, "btn btn-outline btn-sm", true));

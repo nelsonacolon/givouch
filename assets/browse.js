@@ -20,6 +20,34 @@
     return a;
   }
   var official = null; // official-data matches for the current search
+  var LEVEL_NUM = { 1: "certificate", 2: "associate", 3: "bachelor", 4: "grad_certificate", 5: "master", 6: "doctoral", 7: "doctoral", 8: "grad_certificate" };
+  var LEVEL_ORDER = ["certificate", "associate", "bachelor", "grad_certificate", "master", "doctoral"];
+  function reviewLink(s, p) {
+    return "/review?" + new URLSearchParams({ school: String(s.id), cip: p.code, level: String(p.level) }).toString();
+  }
+  // Every program the school offers, grouped by degree level; each one opens the review form.
+  function programList(s) {
+    var box = el("details", "official-programs");
+    var sum = el("summary", null, t("browse.programsOffered").replace("{n}", s.programs.length));
+    box.appendChild(sum);
+    var groups = {};
+    s.programs.forEach(function (p) {
+      var k = LEVEL_NUM[p.level] || "other";
+      (groups[k] = groups[k] || []).push(p);
+    });
+    LEVEL_ORDER.concat(["other"]).forEach(function (k) {
+      if (!groups[k]) return;
+      box.appendChild(el("h4", "level-head", k === "other" ? t("browse.otherLevel") : t("level." + k)));
+      var ul = el("ul", "program-links");
+      groups[k].forEach(function (p) {
+        var li = el("li");
+        li.appendChild(link(p.title, reviewLink(s, p), "program-link"));
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    });
+    return box;
+  }
 
   function countryLabel(n) { return window.GVLabels ? window.GVLabels.country(n) : n; }
   function fieldLabel(n) { return window.GVLabels ? window.GVLabels.field(n) : n; }
@@ -116,14 +144,10 @@
     if (s.completionRate !== null && s.completionRate !== undefined) facts.push(t("find.completion") + ": " + s.completionRate + "%");
     if (s.avgNetPrice) facts.push(t("find.netPrice") + ": $" + s.avgNetPrice.toLocaleString("en-US"));
     if (facts.length) main.appendChild(el("p", "muted small", facts.join(" · ")));
-    main.appendChild(el("span", "tag", t("browse.noReviewsYet")));
+    var onSite = s.givouch && s.givouch.length;
+    main.appendChild(el("span", onSite ? "tag tag-gold" : "tag", t(onSite ? "browse.onGivouch" : "browse.noReviewsYet")));
+    if (s.programs && s.programs.length) main.appendChild(programList(s));
     var actions = el("div", "find-actions");
-    var p = new URLSearchParams();
-    p.set("school", s.name);
-    if (s.state) p.set("state", s.state);
-    if (s.city) p.set("city", s.city);
-    p.set("country", "United States");
-    actions.appendChild(link("+ " + t("find.addToGivouch"), "/add-program?" + p.toString(), "btn btn-outline btn-sm"));
     actions.appendChild(link(t("find.checkVA") + " ↗", vaSearch(s.name), "btn btn-outline btn-sm", true));
     var site = s.url && safeUrl(s.url);
     if (site) actions.appendChild(link(t("find.website") + " ↗", site, "btn btn-outline btn-sm", true));
@@ -158,8 +182,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || q !== state.q) return;
-        // Skip schools already listed on GIVouch (they appear above).
-        official = (d.schools || []).filter(function (s) { return !(s.givouch && s.givouch.length); });
+        official = d.schools || [];
         renderOfficial();
       })
       .catch(function () {});

@@ -2,7 +2,12 @@
 (function () {
   "use strict";
   var t = function (k) { return window.GV ? window.GV.t(k) : k; };
-  var programId = parseInt(new URLSearchParams(location.search).get("program"), 10);
+  var params = new URLSearchParams(location.search);
+  var programId = parseInt(params.get("program"), 10);
+  // Reviewing a program from official U.S. data that may not be on GIVouch yet.
+  var official = !programId && params.get("school") ? { school: params.get("school"), cip: params.get("cip"), level: params.get("level") } : null;
+  var existing = {}; // GIVouch program ids this official program already matches, by format
+  var newProgramId = null;
   var program = null;
   var step = 0;
   var sending = false;
@@ -41,13 +46,13 @@
       "error-callback": function () { tsToken = ""; updateNext(); }
     });
   }
-  var a = { overall: 0, recommend: null, paperwork: 0, paidOnTime: "", credits: "", worth: 0,
+  var a = { format: "", overall: 0, recommend: null, paperwork: 0, paidOnTime: "", credits: "", worth: 0,
             job: "", startYear: "", instruction: 0, jobHelp: "", vetSupport: "", yellowRibbon: "", reviewer: "", benefit: "", comment: "", displayName: "",
             email: "", attest: false, website: "" };
 
   // Each step holds one or two questions. "required" lists what must be answered to continue.
   var STEPS = [
-    { qs: ["overall", "recommend"], required: ["overall", "recommend"] },
+    { qs: ["format", "overall", "recommend"], required: ["format", "overall", "recommend"] },
     { qs: ["paperwork", "paidOnTime"], required: ["paperwork", "paidOnTime"] },
     { qs: ["credits", "worth"], required: ["credits", "worth"] },
     { qs: ["instruction", "jobHelp"], required: ["instruction", "jobHelp"] },
@@ -59,6 +64,7 @@
   ];
 
   var CHOICES = {
+    format: [["in_person", "fmt.in_person"], ["online", "fmt.online"]],
     recommend: [[true, "rv.yes"], [false, "rv.no"]],
     paidOnTime: [["always", "paid.always"], ["usually", "paid.usually"], ["rarely", "paid.rarely"], ["not_applicable", "paid.not_applicable"]],
     credits: [["yes", "credits.yes"], ["partly", "credits.partly"], ["no", "credits.no"], ["not_applicable", "credits.not_applicable"]],
@@ -179,7 +185,7 @@
     var top = el("div", "rv-top");
     top.appendChild(el("p", "muted rv-count", t("rv.step") + " " + (step + 1) + " " + t("rv.of") + " " + STEPS.length));
     var cancel = el("a", "link-btn", t("rv.cancel"));
-    cancel.href = "/program?id=" + programId;
+    cancel.href = official ? "/browse?q=" + encodeURIComponent(program.school) : "/program?id=" + programId;
     top.appendChild(cancel);
     root.appendChild(top);
     var bar = el("div", "progress"); var fill = el("div", "progress-fill");
@@ -192,7 +198,7 @@
 
     var isLast = step === STEPS.length - 1;
     if (isLast && codeSent) root.appendChild(codeBox());
-    else STEPS[step].qs.forEach(function (k) { root.appendChild(question(k)); });
+    else STEPS[step].qs.forEach(function (k) { if (k !== "format" || official) root.appendChild(question(k)); });
 
     // Honeypot field, hidden from people.
     var hp = el("input"); hp.type = "text"; hp.name = "website"; hp.tabIndex = -1; hp.autocomplete = "off";
@@ -251,7 +257,7 @@
     if (sending) return;
     sending = true; render();
     fetch("/api/verify", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: a.email.trim(), programId: programId, lang: window.GV ? window.GV.lang() : "en", turnstileToken: tsToken }) })
+      body: JSON.stringify({ email: a.email.trim(), programId: official ? existing[a.format] || null : programId, lang: window.GV ? window.GV.lang() : "en", turnstileToken: tsToken }) })
       .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
       .then(function (res) {
         sending = false;
@@ -276,7 +282,7 @@
     if (sending) return;
     sending = true; render();
     var body = {
-      programId: programId, overall: a.overall, recommend: a.recommend, paperwork: a.paperwork,
+      programId: official ? null : programId, official: official ? { school: official.school, cip: official.cip, level: official.level, format: a.format } : null, overall: a.overall, recommend: a.recommend, paperwork: a.paperwork,
       paidOnTime: a.paidOnTime, credits: a.credits, worth: a.worth, job: a.job,
       instruction: a.instruction, jobHelp: a.jobHelp, vetSupport: a.vetSupport, yellowRibbon: a.yellowRibbon,
       startYear: a.startYear === "" ? null : a.startYear, reviewer: a.reviewer, benefit: a.benefit,
@@ -287,7 +293,7 @@
       .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
       .then(function (res) {
         sending = false;
-        if (res.status === 201) return done();
+        if (res.status === 201) { newProgramId = res.d && res.d.programId; return done(); }
         render();
         if (res.status === 409) return showError("rv.err.duplicate");
         if (res.d && /^code_/.test(res.d.error || "")) {
@@ -308,7 +314,8 @@
     box.appendChild(el("h1", null, t("rv.thanks")));
     box.appendChild(el("p", null, t("rv.thanksBody")));
     var back = el("a", "btn btn-primary", t("rv.backToProgram"));
-    back.href = "/program?id=" + programId;
+    var id = official ? newProgramId : programId;
+    back.href = id ? "/program?id=" + id : "/browse";
     box.appendChild(back);
     root.appendChild(box);
     window.scrollTo(0, 0);
@@ -324,10 +331,19 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    if (!programId || programId <= 0) return fail("prog.notFound");
-    fetch("/api/program?id=" + programId)
+    if (!official && (!programId || programId <= 0)) return fail("prog.notFound");
+    if (official) STEPS[0].required = ["format", "overall", "recommend"];
+    else STEPS[0].required = ["overall", "recommend"];
+    var url = official
+      ? "/api/official-program?" + new URLSearchParams({ school: official.school, cip: official.cip || "", level: official.level || "" }).toString()
+      : "/api/program?id=" + programId;
+    fetch(url)
       .then(function (r) { if (r.status === 404) throw new Error("404"); if (!r.ok) throw new Error("x"); return r.json(); })
-      .then(function (d) { program = d.program; return loadTurnstile(); })
+      .then(function (d) {
+        program = d.program;
+        if (official) { program.program_name = d.program.programName; existing = d.existing || {}; }
+        return loadTurnstile();
+      })
       .then(function () { if (program) render(); })
       .catch(function (e) { fail(e.message === "404" ? "prog.notFound" : "browse.error"); });
     document.addEventListener("gv:lang", function () {
