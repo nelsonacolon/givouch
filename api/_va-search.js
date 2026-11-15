@@ -42,6 +42,6 @@ export async function vaSearchHandler(req, res) {
   res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
   return res.status(200).json({
     available: true, total: schools.length, schools,
-    ...(debug ? { vaTotal: first.total, pagesRead: pages, sample: first.rows.slice(0, 5), tried: first.tried } : {}),
+    ...(debug ? { vaTotal: first.total, pagesRead: pages, fieldsSent: (first.rows[0] || {}).fields, sample: first.rows.slice(0, 3).map(({ fields, ...r }) => r), tried: first.tried } : {}),
   });
 }

@@ -369,6 +369,7 @@
     if (page) actions.appendChild(link(t("browse.vaPage") + " ↗", page, "btn btn-outline btn-sm", true));
     var site = s.website && safeUrl(s.website);
     if (site) actions.appendChild(link(t("find.website") + " ↗", site, "btn btn-outline btn-sm", true));
+    else if (s.website === undefined || s.website === null) actions.setAttribute("data-va-code", s.code);
     main.appendChild(actions);
     c.appendChild(main);
     return c;
@@ -384,7 +385,9 @@
     box.appendChild(el("p", "muted small", t("browse.vaNote")));
     var pages = Math.ceil(list.length / VA_PER_PAGE);
     if (vaPage >= pages) vaPage = pages - 1;
-    list.slice(vaPage * VA_PER_PAGE, (vaPage + 1) * VA_PER_PAGE).forEach(function (s) { box.appendChild(vaCard(s)); });
+    var pageRows = list.slice(vaPage * VA_PER_PAGE, (vaPage + 1) * VA_PER_PAGE);
+    pageRows.forEach(function (s) { box.appendChild(vaCard(s)); });
+    fillWebsites(pageRows);
     if (pages > 1) {
       var nav = el("div", "rv-nav official-pages");
       var prev = el("button", "btn btn-outline btn-sm", "‹ " + t("browse.prevPage")); prev.type = "button";
@@ -399,6 +402,32 @@
       box.appendChild(nav);
     }
   }
+  // The VA's search results leave out websites; each school's full record has it. Look up the
+  // schools on screen once (locations of the same school share one lookup) and add the button.
+  var siteCache = {};
+  function fillWebsites(rows) {
+    rows.forEach(function (s) {
+      if (s.website) return;
+      var key = normName(s.name);
+      var known = siteCache[key];
+      var apply = function (url) {
+        s.website = url || false;
+        var safe = url && safeUrl(url);
+        var row = document.querySelector('[data-va-code="' + s.code + '"]');
+        if (!row) return;
+        row.removeAttribute("data-va-code");
+        if (safe) row.appendChild(link(t("find.website") + " ↗", safe, "btn btn-outline btn-sm", true));
+      };
+      if (known && typeof known.then === "function") { known.then(apply); return; }
+      if (known !== undefined) { apply(known); return; }
+      siteCache[key] = fetch("/api/va?op=school&code=" + encodeURIComponent(s.code))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { var u = d && d.school && d.school.website || null; siteCache[key] = u; return u; })
+        .catch(function () { siteCache[key] = null; return null; });
+      siteCache[key].then(apply);
+    });
+  }
+
   function loadVA() {
     va = null; vaPage = 0;
     vaPending = wantsVA();

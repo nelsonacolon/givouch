@@ -44,7 +44,8 @@ export function toRow(r) {
     type: String(a.type || a.institution_type_name || a.institutionTypeName || "").toUpperCase(),
     ipeds: digits(a.cross || a.ipeds || a.iped),
     campus: String(a.campus_type || a.campusType || ""),
-    website: website(a.website || a.web_site || a.url || a.school_url),
+    website: website(a.website || a.web_site || a.webSite || a.url || a.school_url || a.homepage),
+    fields: Object.keys(a).slice(0, 80), // for debug output only
   };
 }
 

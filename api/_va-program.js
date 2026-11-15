@@ -12,9 +12,10 @@ export async function vaSchoolHandler(req, res) {
   let row;
   try { row = await vaProfile(code); } catch { row = null; }
   if (!row) return res.status(404).json({ error: "Program not found" });
-  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
+  const debug = (req.query || {}).debug === "1";
+  res.setHeader("Cache-Control", debug ? "no-store" : "s-maxage=86400, stale-while-revalidate=604800");
   return res.status(200).json({ school: {
     code, school: row.displayName, city: row.city, state: row.state, country: "United States",
-    schoolType: schoolType(row.type), vaUrl: pageUrl(code),
-  } });
+    schoolType: schoolType(row.type), vaUrl: pageUrl(code), website: row.website,
+  }, ...(debug ? { fieldsSent: row.fields } : {}) });
 }
