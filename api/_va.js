@@ -44,7 +44,19 @@ export function toRow(r) {
     type: String(a.type || a.institution_type_name || a.institutionTypeName || "").toUpperCase(),
     ipeds: digits(a.cross || a.ipeds || a.iped),
     campus: String(a.campus_type || a.campusType || ""),
+    website: website(a.website || a.web_site || a.url || a.school_url),
   };
+}
+
+// The school's website from the VA record, as a safe https/http link (or null).
+function website(v) {
+  let u = String(v || "").trim();
+  if (!u || /\s/.test(u)) return null;
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u.replace(/^\/+/, "");
+  try {
+    const x = new URL(u);
+    return (x.protocol === "https:" || x.protocol === "http:") && x.hostname.includes(".") ? x.href : null;
+  } catch { return null; }
 }
 
 export function toRows(json) {

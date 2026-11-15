@@ -367,6 +367,8 @@
     actions.appendChild(link(t("browse.writeReview"), "/review?va=" + encodeURIComponent(s.code), "btn btn-primary btn-sm"));
     var page = safeUrl(s.vaUrl);
     if (page) actions.appendChild(link(t("browse.vaPage") + " ↗", page, "btn btn-outline btn-sm", true));
+    var site = s.website && safeUrl(s.website);
+    if (site) actions.appendChild(link(t("find.website") + " ↗", site, "btn btn-outline btn-sm", true));
     main.appendChild(actions);
     c.appendChild(main);
     return c;

@@ -35,7 +35,7 @@ export async function vaSearchHandler(req, res) {
     .filter((r) => (seen.has(r.code) ? false : seen.add(r.code)))
     .map((r) => ({
       code: r.code, name: r.displayName, city: r.city, state: r.state,
-      type: r.type || null, schoolType: schoolType(r.type), vaUrl: pageUrl(r.code),
+      type: r.type || null, schoolType: schoolType(r.type), vaUrl: pageUrl(r.code), website: r.website,
     }))
     .sort((a, b) => a.name.localeCompare(b.name) || String(a.state).localeCompare(String(b.state)));
 
