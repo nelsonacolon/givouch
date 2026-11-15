@@ -5,6 +5,8 @@
 // If nothing matches, or the VA's service is down or changes, it falls back to the tool's
 // name search, so the button always works. debug=1 returns JSON instead of redirecting.
 
+import { vaSearchHandler } from "./_va-search.js";
+import { vaSchoolHandler } from "./_va-program.js";
 import { TOOL, searchUrl, toRows, cleanName as clean, norm, digits } from "./_va.js";
 
 const SEARCH_URLS = [
@@ -16,7 +18,13 @@ const rows = toRows;
 // Main campus first: VA marks branches as extensions.
 const mainFirst = (a, b) => (/^e/i.test(a.campus) ? 1 : 0) - (/^e/i.test(b.campus) ? 1 : 0);
 
+// One function for all VA lookups (Vercel's Hobby plan allows 12 functions per deployment):
+//   op=search → VA-approved schools for a name search; op=school → one school by facility code;
+//   otherwise → redirect to the school's VA page.
 export default async function handler(req, res) {
+  const op = (req.query || {}).op;
+  if (op === "search") return vaSearchHandler(req, res);
+  if (op === "school") return vaSchoolHandler(req, res);
   const q = req.query || {};
   const id = digits(q.id).slice(0, 10);
   const name = clean(q.name, 120);

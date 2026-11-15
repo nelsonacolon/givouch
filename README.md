@@ -58,3 +58,6 @@ Open `/api/health` on the deployed site. It should show `"ok": true` and `"anthr
 
 ## Cache busting
 Pages load `/assets/*.css` and `*.js` with `?v=<date+letter>`. After changing a file in `assets/`, bump that value in every page so browsers fetch the new copy (one replace across `*.html`).
+
+## Function limit (Vercel Hobby)
+Every file in `api/` whose name doesn't start with `_` is one serverless function, and the Hobby plan allows **12 per deployment** (more fails the build). Put new endpoints behind an `op=` parameter of an existing function, with the handler in a `_name.js` file (see `api/va.js` and `api/find.js`).

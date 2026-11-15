@@ -403,7 +403,7 @@
     renderVA();
     if (!vaPending) return;
     var q = state.q;
-    fetch("/api/va-search?q=" + encodeURIComponent(q))
+    fetch("/api/va?op=search&q=" + encodeURIComponent(q))
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (q !== state.q) return;

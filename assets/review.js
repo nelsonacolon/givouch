@@ -345,8 +345,8 @@
       STEPS[0] = { qs: ["overall", "recommend"], required: ["overall", "recommend"] };
       STEPS.unshift({ qs: ["programName", "format"], required: ["programName", "format"] });
     }
-    var url = vaCode ? "/api/va-program?code=" + encodeURIComponent(vaCode) : official
-      ? "/api/official-program?" + new URLSearchParams({ school: official.school, cip: official.cip || "", level: official.level || "" }).toString()
+    var url = vaCode ? "/api/va?op=school&code=" + encodeURIComponent(vaCode) : official
+      ? "/api/find?" + new URLSearchParams({ op: "program", school: official.school, cip: official.cip || "", level: official.level || "" }).toString()
       : "/api/program?id=" + programId;
     fetch(url)
       .then(function (r) { if (r.status === 404) throw new Error("404"); if (!r.ok) throw new Error("x"); return r.json(); })

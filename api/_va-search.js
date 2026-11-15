@@ -1,4 +1,4 @@
-// GET /api/va-search?q=<school name>
+// GET /api/va?op=search&q=<school name>   (handled by api/va.js)
 // U.S. schools and training the VA approves that aren't in the College Scorecard: flight
 // schools, trade schools, on-the-job training and others that don't take federal student aid
 // (the Scorecard only covers schools that do). Schools with an IPEDS id are left out because
@@ -7,7 +7,7 @@ import { vaSearch, cleanName, pageUrl, schoolType } from "./_va.js";
 
 const MAX_PAGES = 5;
 
-export default async function handler(req, res) {
+export async function vaSearchHandler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Method not allowed" });

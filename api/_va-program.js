@@ -1,8 +1,8 @@
-// GET /api/va-program?code=<VA facility code>
+// GET /api/va?op=school&code=<VA facility code>   (handled by api/va.js)
 // One school from the VA's list, for reviewing a school that isn't in the College Scorecard.
 import { vaProfile, isCode, pageUrl, schoolType } from "./_va.js";
 
-export default async function handler(req, res) {
+export async function vaSchoolHandler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Method not allowed" });

@@ -3,6 +3,7 @@
 // (official data), then marks which ones already have reviews on GIVouch.
 // Uses SCORECARD_API_KEY if set, otherwise the shared DEMO_KEY (low limits; for testing only).
 import { getSql } from "./_db.js";
+import { officialProgramHandler } from "./_official-program.js";
 import { FIELDS, US_STATES } from "./_lists.js";
 import { CIP, SCORECARD as BASE, listPrograms } from "./_official.js";
 
@@ -34,6 +35,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
   const q = req.query || {};
+  // op=program: one program's details (for reviewing a program that isn't on GIVouch yet).
+  if (q.op === "program") return officialProgramHandler(req, res);
   const field = FIELDS.includes(q.field) && q.field !== "Other" ? q.field : "";
   const level = Object.prototype.hasOwnProperty.call(LEVELS, q.level) ? q.level : "";
   const ownership = Object.prototype.hasOwnProperty.call(OWNERSHIP, q.ownership) ? q.ownership : "";
