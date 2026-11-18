@@ -179,12 +179,14 @@
 
   function submitAsk() {
     if (!canAsk()) return;
+    // Keep the security-check token before redrawing: the redraw resets the widget.
+    var token = tsToken;
     ask.loading = true; ask.error = ""; ask.result = null;
     render();
     fetch("/api/program?op=ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: data.program.id, question: ask.q.trim(), lang: lang(), turnstileToken: tsToken })
+      body: JSON.stringify({ id: data.program.id, question: ask.q.trim(), lang: lang(), turnstileToken: token })
     })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
       .then(function (res) {
