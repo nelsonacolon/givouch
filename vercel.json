@@ -22,6 +22,9 @@
   "functions": {
     "api/find-abroad.js": {
       "maxDuration": 60
+    },
+    "api/program.js": {
+      "maxDuration": 30
     }
   }
 }

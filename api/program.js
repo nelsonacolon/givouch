@@ -3,10 +3,13 @@
 // Reviewer emails are never selected, so they can't leak into the response.
 import { getSql } from "./_db.js";
 import { ensureReviewColumns } from "./_schema.js";
+import ask from "./_ask.js";
 
 export default async function handler(req, res) {
+  // POST /api/program?op=ask — answer a question from this program's reviews (see _ask.js).
+  if (req.method === "POST" && req.query.op === "ask") return ask(req, res);
   if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
 

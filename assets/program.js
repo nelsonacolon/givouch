@@ -13,6 +13,25 @@
   }
   var data = null;
   var sort = "newest";
+  // "Ask about this program" state (kept across re-renders).
+  var ask = { q: "", loading: false, result: null, error: "" };
+  var tsKey = null, tsReady = false, tsToken = "";
+
+  function loadTurnstile() {
+    if (tsKey !== null) return Promise.resolve();
+    return fetch("/api/config").then(function (r) { return r.ok ? r.json() : {}; }).then(function (c) {
+      tsKey = c.turnstileSiteKey || "";
+      if (!tsKey) return;
+      return new Promise(function (resolve) {
+        window.gvTurnstileLoaded = function () { tsReady = true; resolve(); };
+        var s = document.createElement("script");
+        s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=gvTurnstileLoaded&render=explicit";
+        s.async = true; s.onerror = function () { resolve(); };
+        document.head.appendChild(s);
+        setTimeout(resolve, 8000);
+      });
+    }).catch(function () { tsKey = ""; });
+  }
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -54,6 +73,7 @@
 
   function reviewCard(r) {
     var c = el("article", "review-card");
+    c.id = "review-" + r.id;
     var head = el("div", "review-head");
     head.appendChild(el("strong", null, r.display_name || t("prog.verified")));
     head.appendChild(el("span", "tag tag-gold", t("prog.verified")));
@@ -90,6 +110,93 @@
     return c;
   }
 
+  function canAsk() {
+    return !ask.loading && ask.q.trim().length >= 3 && (!tsKey || tsToken);
+  }
+
+  function askBox() {
+    var card = el("section", "card ask-card");
+    card.appendChild(el("h2", "section-label", t("ask.title")));
+    card.appendChild(el("p", "muted small", t("ask.hint")));
+    var row = el("div", "ask-row");
+    var input = el("input");
+    input.type = "text"; input.id = "ask-q"; input.maxLength = 300;
+    input.placeholder = t("ask.placeholder");
+    input.setAttribute("aria-label", t("ask.title"));
+    input.value = ask.q;
+    var btn = el("button", "btn btn-primary", ask.loading ? t("ask.loading") : t("ask.button"));
+    btn.type = "button"; btn.id = "ask-btn"; btn.disabled = !canAsk();
+    input.addEventListener("input", function () { ask.q = input.value; btn.disabled = !canAsk(); });
+    input.addEventListener("keydown", function (e) { if (e.key === "Enter" && canAsk()) submitAsk(); });
+    btn.addEventListener("click", submitAsk);
+    row.appendChild(input); row.appendChild(btn);
+    card.appendChild(row);
+
+    if (tsKey) {
+      var box = el("div", "ts-box");
+      card.appendChild(box);
+      tsToken = "";
+      if (tsReady && window.turnstile) {
+        window.turnstile.render(box, {
+          sitekey: tsKey, language: lang(),
+          theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
+          callback: function (tok) { tsToken = tok; btn.disabled = !canAsk(); },
+          "expired-callback": function () { tsToken = ""; btn.disabled = !canAsk(); },
+          "error-callback": function () { tsToken = ""; btn.disabled = !canAsk(); }
+        });
+      } else box.appendChild(el("p", "muted small", t("rv.tsLoading")));
+    }
+
+    if (ask.error) card.appendChild(el("p", "notice notice-warn", t(ask.error)));
+    if (ask.result) {
+      var out = el("div", "ask-answer");
+      out.appendChild(el("span", "tag tag-gold", t("ask.label")));
+      if (ask.result.answer) out.appendChild(el("p", null, ask.result.answer));
+      if (ask.result.reviewCount > 0 && ask.result.reviewCount < 3) out.appendChild(el("p", "muted small", t("ask.few")));
+      if (ask.result.citations && ask.result.citations.length) {
+        var cites = el("p", "ask-cites small");
+        cites.appendChild(document.createTextNode(t("ask.basedOn") + " "));
+        ask.result.citations.forEach(function (c, i) {
+          var a = el("a", null, t("ask.review") + " " + c.n);
+          a.href = "#review-" + c.reviewId;
+          a.addEventListener("click", function (e) {
+            var target = document.getElementById("review-" + c.reviewId);
+            if (!target) return;
+            e.preventDefault();
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+            target.classList.add("review-highlight");
+            setTimeout(function () { target.classList.remove("review-highlight"); }, 2000);
+          });
+          if (i) cites.appendChild(document.createTextNode(", "));
+          cites.appendChild(a);
+        });
+        out.appendChild(cites);
+      }
+      card.appendChild(out);
+    }
+    return card;
+  }
+
+  function submitAsk() {
+    if (!canAsk()) return;
+    ask.loading = true; ask.error = ""; ask.result = null;
+    render();
+    fetch("/api/program?op=ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: data.program.id, question: ask.q.trim(), lang: lang(), turnstileToken: tsToken })
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        ask.loading = false;
+        if (res.ok) ask.result = res.d;
+        else ask.error = res.d && res.d.error === "turnstile" ? "rv.err.turnstile"
+          : res.d && res.d.error === "question" ? "ask.err.short" : "ask.err.failed";
+        render();
+      })
+      .catch(function () { ask.loading = false; ask.error = "ask.err.failed"; render(); });
+  }
+
   function render() {
     var root = document.getElementById("program");
     root.innerHTML = "";
@@ -111,6 +218,7 @@
     main.appendChild(tags);
 
     main.appendChild(el("p", "notice", t("prog.notice")));
+    if (s.review_count > 0) main.appendChild(askBox());
 
     var rhead = el("div", "results-head");
     rhead.appendChild(el("h2", "section-label", t("prog.reviews")));
@@ -187,7 +295,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    load();
+    loadTurnstile().then(load);
     document.addEventListener("gv:lang", function () { if (data) render(); });
   });
 })();
